@@ -610,7 +610,7 @@ Two mechanisms exist for reserving P-series GPU instances:
 |---------|---------------------|--------------------------|
 | Scope | Raw EC2 instances | SageMaker-managed (training jobs, HyperPod, endpoints) |
 | Instance prefix | `p5.48xlarge` | `ml.p5.48xlarge` |
-| Duration | 1-14 days (1-day), or 7-day increments up to 182 days | 1-182 days (1-day increments) |
+| Duration | 1-182 days (see [AWS docs](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-capacity-blocks.html) for current limits) | 1-182 days (1-day increments) |
 | Max instances | 64 per block, 256 total | 64 per plan, 256 total |
 | Pricing | Upfront fixed fee, dynamic supply/demand | Upfront fixed fee, dynamic supply/demand |
 | Advance booking | Up to 8 weeks | Up to 8 weeks (min 30 min) |
@@ -622,7 +622,9 @@ Two mechanisms exist for reserving P-series GPU instances:
 
 ### EC2 Capacity Blocks — Supported Instance Types
 
-p4d.24xlarge, p4de.24xlarge, p5.48xlarge, p5e.48xlarge, p5en.48xlarge, p6-b200, trn1.32xlarge, trn2.48xlarge
+p4d.24xlarge, p4de.24xlarge, p5.4xlarge, p5.48xlarge, p5e.48xlarge, p5en.48xlarge, p6-b200.48xlarge, p6-b300.48xlarge, trn1.32xlarge, trn2.48xlarge
+
+**Note**: Instance type availability changes over time. Check the [AWS docs](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-capacity-blocks.html) for the current list. UltraServer Capacity Blocks (Trn2, P6e-GB200) have separate limits and behavior.
 
 ### SageMaker Training Plans — Supported Instance Types
 

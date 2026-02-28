@@ -160,6 +160,7 @@ ml-clusters/
     parallelcluster/                          # Wraps aws-tf/parallelcluster/aws
     hyperpod/                                 # Wraps awscc_sagemaker_cluster
     monitoring/                               # AMP, AMG, CloudWatch
+    argocd/                                   # ArgoCD hub install + spoke registration
     atlantis/                                 # Atlantis server deployment
   live/
     terragrunt.hcl                            # Root: remote_state, generate provider
@@ -179,6 +180,7 @@ ml-clusters/
         s3-replication/terragrunt.hcl
         shared-storage/terragrunt.hcl
         eks-training/terragrunt.hcl
+        argocd/terragrunt.hcl                    # Hub-only: ArgoCD install + spoke registration
         parallelcluster/terragrunt.hcl
         monitoring/terragrunt.hcl
       us-west-2/
@@ -244,12 +246,12 @@ Each account/region gets its own VPC with non-overlapping CIDRs. All cluster typ
 - **Placement groups**: One `cluster` placement group per GPU fleet per AZ. ParallelCluster creates its own; EKS node groups and HyperPod reference the shared one.
 - **NAT Gateway**: One per AZ for production, single NAT for dev (cost savings).
 
-**Terraform module**: `terraform-aws-modules/vpc/aws` v5.x
+**Terraform module**: `terraform-aws-modules/vpc/aws` v6.x
 
 ```hcl
 module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
-  version = "~> 5.0"
+  version = "~> 6.0"
 
   name = "ml-${var.account_name}-${var.aws_region}"
   cidr = var.vpc_cidr
@@ -308,7 +310,7 @@ module "vpc" {
 #### 4.3.4 ECR
 
 - Single ECR registry in main account (483026362307, us-east-1)
-- Cross-account pull: ECR repository policy grants `ecr:BatchGetImage` to secondary account
+- Cross-account pull: ECR repository policy grants full pull permissions to secondary account (`ecr:GetDownloadUrlForLayer`, `ecr:BatchGetImage`, `ecr:BatchCheckLayerAvailability`). Secondary account node roles also need `ecr:GetAuthorizationToken` (resource: `*`).
 - `image_tag_mutability = "IMMUTABLE"` for training reproducibility
 - Lifecycle policy: Keep last 30 images per repository
 
@@ -420,8 +422,9 @@ module "eks" {
 
   # EKS managed add-ons (day-0 critical)
   cluster_addons = {
-    coredns    = { most_recent = true }
-    kube-proxy = { most_recent = true }
+    coredns                = { most_recent = true }
+    kube-proxy             = { most_recent = true }
+    eks-pod-identity-agent = { most_recent = true }  # Required for HyperPod EKS + Atlantis Pod Identity
     vpc-cni = {
       most_recent = true
       configuration_values = jsonencode({
@@ -431,29 +434,9 @@ module "eks" {
     aws-ebs-csi-driver = { most_recent = true }
   }
 
-  # GPU node group with EFA
+  # GPU nodes are managed exclusively by Karpenter (see NodePool below).
+  # Do NOT add GPU managed node groups here to avoid dual autoscaling conflicts.
   eks_managed_node_groups = {
-    gpu-training = {
-      ami_type       = "AL2023_x86_64_NVIDIA"
-      instance_types = ["p5.48xlarge"]
-      min_size       = 0
-      max_size       = var.gpu_max_nodes
-      desired_size   = 0
-
-      enable_efa_support = true
-
-      taints = [{
-        key    = "nvidia.com/gpu"
-        value  = "true"
-        effect = "NO_SCHEDULE"
-      }]
-
-      labels = {
-        "nvidia.com/gpu.present" = "true"
-        "node-role"              = "gpu-training"
-      }
-    }
-
     system = {
       ami_type       = "AL2023_x86_64_STANDARD"
       instance_types = ["m5.xlarge"]
@@ -558,7 +541,7 @@ resource "aws_s3_object" "lifecycle_scripts" {
 ```
 
 **HyperPod EKS Prerequisites** (validated in module):
-- EKS cluster version must be in HyperPod's supported range (check AWS docs — typically 1.30-1.32)
+- EKS cluster version must be in HyperPod's supported range (currently 1.28-1.33; verify against [AWS docs](https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-hyperpod-eks-prerequisites.html) at implementation time)
 - Authentication mode must be `API` or `API_AND_CONFIG_MAP` (not `CONFIG_MAP` only)
 - VPC CNI add-on >= v1.18.4 (required for EFA)
 - Amazon EKS Pod Identity Agent add-on must be installed
@@ -638,12 +621,16 @@ projects:
 
 **GitOps Bridge** — the handoff between Terraform and ArgoCD:
 
-1. Terraform creates the EKS cluster and installs ArgoCD (Helm)
-2. Terraform writes cluster metadata to an ArgoCD cluster secret (annotations: account_id, region, vpc_id, IAM role ARNs, feature flags)
-3. ArgoCD reads annotations and deploys add-ons/workloads from `gitops/` directory
+1. Terraform creates each EKS cluster (via `modules/eks-cluster/`)
+2. A separate hub-only Terragrunt component (`live/{account}/{region}/argocd/terragrunt.hcl`) installs ArgoCD on the hub cluster and registers spoke clusters
+3. For each spoke cluster, Terraform creates an ArgoCD cluster secret (in the hub's ArgoCD namespace) with cluster metadata annotations
+4. ArgoCD reads annotations and deploys add-ons/workloads from `gitops/` directory to each spoke
+
+**Important**: ArgoCD is installed only on the hub cluster (main account, us-east-1 EKS system cluster). It is NOT installed inside `modules/eks-cluster/` — that would give every cluster its own ArgoCD, breaking the hub-spoke model.
 
 ```hcl
-# In modules/eks-cluster/ — after EKS creation
+# In live/main-account/us-east-1/argocd/terragrunt.hcl (hub-only component)
+# Installs ArgoCD on the hub cluster
 resource "helm_release" "argocd" {
   name             = "argocd"
   repository       = "https://argoproj.github.io/argo-helm"
@@ -652,17 +639,17 @@ resource "helm_release" "argocd" {
   create_namespace = true
 }
 
-resource "kubernetes_secret" "argocd_cluster" {
+# Hub cluster registers itself
+resource "kubernetes_secret" "hub_cluster" {
   metadata {
-    name      = "in-cluster"
+    name      = var.cluster_name
     namespace = "argocd"
     labels    = { "argocd.argoproj.io/secret-type" = "cluster" }
     annotations = {
       "aws_account_id"  = var.account_id
       "aws_region"      = var.region
       "aws_vpc_id"      = var.vpc_id
-      "cluster_type"    = var.cluster_type  # "training" or "inference"
-      # Feature flags — ArgoCD uses these to decide which add-ons to deploy
+      "cluster_type"    = var.cluster_type
       "enable_karpenter"             = "true"
       "enable_nvidia_device_plugin"  = "true"
       "enable_efa_device_plugin"     = "true"
@@ -670,9 +657,32 @@ resource "kubernetes_secret" "argocd_cluster" {
     }
   }
   data = {
-    name   = "in-cluster"
+    name   = var.cluster_name
     server = "https://kubernetes.default.svc"
     config = jsonencode({ tlsClientConfig = { insecure = false } })
+  }
+}
+
+# Each spoke cluster is registered via a separate secret with the remote endpoint
+resource "kubernetes_secret" "spoke_clusters" {
+  for_each = var.spoke_clusters  # map of cluster_name => { endpoint, ca_data, token, annotations }
+
+  metadata {
+    name      = each.key
+    namespace = "argocd"
+    labels    = { "argocd.argoproj.io/secret-type" = "cluster" }
+    annotations = each.value.annotations
+  }
+  data = {
+    name   = each.key
+    server = each.value.endpoint
+    config = jsonencode({
+      bearerToken = each.value.token
+      tlsClientConfig = {
+        insecure = false
+        caData   = each.value.ca_data
+      }
+    })
   }
 }
 ```
@@ -712,12 +722,12 @@ spec:
 ```
 Central bucket (483026362307, us-east-1)
   │
-  ├─ CRR ──→ Replica (483026362307, us-west-2)
-  ├─ CRR ──→ Replica (159553542841, us-east-1)
-  └─ CRR ──→ Replica (159553542841, us-west-2)
+  ├─ CRR ──→ Replica (483026362307, us-west-2)       # Cross-region replication
+  ├─ SRR ──→ Replica (159553542841, us-east-1)       # Same-region, cross-account replication
+  └─ CRR ──→ Replica (159553542841, us-west-2)       # Cross-region, cross-account replication
 ```
 
-**Data flow**: Upload data to central bucket → S3 CRR replicates to regional replicas (15 min SLA with RTC) → FSx Lustre DRA auto-imports from local S3 replica → Clusters read from FSx.
+**Data flow**: Upload data to central bucket → S3 CRR/SRR replicates to regional replicas (15 min SLA with RTC) → FSx Lustre DRA auto-imports from local S3 replica → Clusters read from FSx.
 
 **Replication rules** (per-prefix):
 
@@ -1024,7 +1034,7 @@ AWS Parallel Computing Service (PCS) is a fully managed Slurm service (distinct 
 - `terraform-aws-modules/eks/aws` v21.15.1 — [GitHub](https://github.com/terraform-aws-modules/terraform-aws-eks)
 - `aws-ia/eks-blueprints-addons/aws` v1.23.0 — [GitHub](https://github.com/aws-ia/terraform-aws-eks-blueprints-addons)
 - `hashicorp/awscc` provider >= v1.25.0 — [Terraform Registry](https://registry.terraform.io/providers/hashicorp/awscc/latest)
-- `terraform-aws-modules/vpc/aws` v5.x — [GitHub](https://github.com/terraform-aws-modules/terraform-aws-vpc)
+- `terraform-aws-modules/vpc/aws` v6.x — [GitHub](https://github.com/terraform-aws-modules/terraform-aws-vpc)
 
 ### AWS Documentation
 - [AWS ParallelCluster User Guide](https://docs.aws.amazon.com/parallelcluster/latest/ug/)
@@ -1065,3 +1075,18 @@ This design was reviewed by Codex (OpenAI) as a second opinion. Key findings inc
 | CIDR table vs repo layout mismatch | Marked secondary us-east-1 as "reserved" with note |
 
 Rejected finding: Codex suggested HyperPod Slurm may not be supported in AWSCC provider. Verified that CloudFormation `AWS::SageMaker::Cluster` supports both `Slurm` and `Eks` orchestrator types, and AWSCC provider mirrors the CloudFormation schema.
+
+## Appendix: Lieutenant Review (Claude + Codex Reconciled)
+
+Second review pass with Terraform registry verification and AWS docs cross-checking. 8 must-fix issues found and resolved:
+
+| Finding | Action Taken |
+|---------|-------------|
+| VPC module v5.x outdated (v6.6.0 available) | Updated to `~> 6.0` (Section 4.3.1, References) |
+| HyperPod EKS K8s version range wrong ("1.30-1.32") | Corrected to "1.28-1.33" with link to AWS docs (Section 4.4.3) |
+| ECR cross-account permissions incomplete (only `BatchGetImage`) | Added full pull permission set including `GetDownloadUrlForLayer`, `BatchCheckLayerAvailability`, `GetAuthorizationToken` (Section 4.3.4) |
+| EKS Pod Identity Agent add-on missing from day-0 set | Added `eks-pod-identity-agent` to `cluster_addons` (Section 4.4.2) |
+| ArgoCD installed in every EKS cluster, not hub-only; cluster secret hardcoded to local | Moved ArgoCD to hub-only component (`argocd/terragrunt.hcl`), added spoke registration with remote endpoints (Section 4.5.2) |
+| Dual GPU autoscaling via managed node groups + Karpenter | Removed GPU managed node group; Karpenter exclusively manages GPU nodes (Section 4.4.2) |
+| S3 replication to secondary us-east-1 mislabeled as CRR (same-region) | Corrected to SRR with annotation (Section 4.6) |
+| Capacity Block duration limits incorrect in research report | Updated to "1-182 days" with AWS docs link (research report) |
