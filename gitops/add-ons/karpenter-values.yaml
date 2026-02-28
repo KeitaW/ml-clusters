@@ -1,0 +1,27 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: karpenter
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: oci://public.ecr.aws/karpenter
+    chart: karpenter
+    targetRevision: 1.1.1
+    helm:
+      values: |
+        replicas: 2
+        settings:
+          clusterName: CLUSTER_NAME_PLACEHOLDER
+          interruptionQueue: QUEUE_NAME_PLACEHOLDER
+        serviceAccount:
+          annotations:
+            eks.amazonaws.com/role-arn: ROLE_ARN_PLACEHOLDER
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kube-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

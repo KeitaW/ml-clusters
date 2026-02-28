@@ -1,0 +1,131 @@
+version: 3
+automerge: false
+parallel_plan: true
+parallel_apply: false
+
+projects:
+  # --- Execution Order Group 0: Foundation (IAM, Networking) ---
+  - name: main-us-east-1-iam
+    dir: live/main-account/us-east-1/iam
+    workflow: terragrunt
+    execution_order_group: 0
+
+  - name: main-us-east-1-networking
+    dir: live/main-account/us-east-1/networking
+    workflow: terragrunt
+    execution_order_group: 0
+
+  - name: main-us-west-2-networking
+    dir: live/main-account/us-west-2/networking
+    workflow: terragrunt
+    execution_order_group: 0
+
+  - name: secondary-us-west-2-iam
+    dir: live/secondary-account/us-west-2/iam
+    workflow: terragrunt
+    execution_order_group: 0
+
+  - name: secondary-us-west-2-networking
+    dir: live/secondary-account/us-west-2/networking
+    workflow: terragrunt
+    execution_order_group: 0
+
+  # --- Execution Order Group 1: S3 Buckets ---
+  - name: main-us-east-1-s3-central-data
+    dir: live/main-account/us-east-1/s3-central-data
+    workflow: terragrunt
+    execution_order_group: 1
+
+  - name: main-us-east-1-s3-tfstate
+    dir: live/main-account/us-east-1/s3-tfstate
+    workflow: terragrunt
+    execution_order_group: 1
+
+  - name: main-us-west-2-s3-data-replica
+    dir: live/main-account/us-west-2/s3-data-replica
+    workflow: terragrunt
+    execution_order_group: 1
+
+  - name: secondary-us-west-2-s3-data-replica
+    dir: live/secondary-account/us-west-2/s3-data-replica
+    workflow: terragrunt
+    execution_order_group: 1
+
+  # --- Execution Order Group 2: S3 Replication + Shared Storage ---
+  - name: main-us-east-1-s3-replication
+    dir: live/main-account/us-east-1/s3-replication
+    workflow: terragrunt
+    execution_order_group: 2
+
+  - name: main-us-east-1-shared-storage
+    dir: live/main-account/us-east-1/shared-storage
+    workflow: terragrunt
+    execution_order_group: 2
+
+  - name: main-us-west-2-shared-storage
+    dir: live/main-account/us-west-2/shared-storage
+    workflow: terragrunt
+    execution_order_group: 2
+
+  - name: secondary-us-west-2-shared-storage
+    dir: live/secondary-account/us-west-2/shared-storage
+    workflow: terragrunt
+    execution_order_group: 2
+
+  # --- Execution Order Group 3: EKS Clusters ---
+  - name: main-us-east-1-eks-training
+    dir: live/main-account/us-east-1/eks-training
+    workflow: terragrunt
+    execution_order_group: 3
+
+  - name: main-us-west-2-eks-inference
+    dir: live/main-account/us-west-2/eks-inference
+    workflow: terragrunt
+    execution_order_group: 3
+
+  - name: secondary-us-west-2-eks-training
+    dir: live/secondary-account/us-west-2/eks-training
+    workflow: terragrunt
+    execution_order_group: 3
+
+  # --- Execution Order Group 4: Cluster Orchestrators ---
+  - name: main-us-east-1-parallelcluster
+    dir: live/main-account/us-east-1/parallelcluster
+    workflow: terragrunt
+    execution_order_group: 4
+
+  - name: secondary-us-west-2-hyperpod-slurm
+    dir: live/secondary-account/us-west-2/hyperpod-slurm
+    workflow: terragrunt
+    execution_order_group: 4
+
+  # --- Execution Order Group 5: GitOps + Monitoring ---
+  - name: main-us-east-1-argocd
+    dir: live/main-account/us-east-1/argocd
+    workflow: terragrunt
+    execution_order_group: 5
+
+  - name: main-us-east-1-atlantis
+    dir: live/main-account/us-east-1/atlantis
+    workflow: terragrunt
+    execution_order_group: 5
+
+  - name: main-us-east-1-monitoring
+    dir: live/main-account/us-east-1/monitoring
+    workflow: terragrunt
+    execution_order_group: 5
+
+workflows:
+  terragrunt:
+    plan:
+      steps:
+        - env:
+            name: TERRAGRUNT_TFPATH
+            value: terraform
+        - run: terragrunt plan -no-color -out=$PLANFILE
+    apply:
+      steps:
+        - env:
+            name: TERRAGRUNT_TFPATH
+            value: terraform
+        - run: terragrunt apply -no-color $PLANFILE
