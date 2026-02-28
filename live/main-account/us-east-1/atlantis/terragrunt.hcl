@@ -14,4 +14,5 @@ inputs = {
   cluster_name           = dependency.eks.outputs.cluster_name
   cluster_endpoint       = dependency.eks.outputs.cluster_endpoint
   cluster_ca_certificate = dependency.eks.outputs.cluster_certificate_authority_data
+  assume_role_arn        = "arn:aws:iam::483026362307:role/TerraformExecutionRole"
 }

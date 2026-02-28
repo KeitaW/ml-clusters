@@ -1,4 +1,8 @@
 # Configure providers using cluster details
+locals {
+  eks_token_args = var.assume_role_arn != "" ? ["eks", "get-token", "--cluster-name", var.cluster_name, "--role-arn", var.assume_role_arn] : ["eks", "get-token", "--cluster-name", var.cluster_name]
+}
+
 provider "helm" {
   kubernetes = {
     host                   = var.cluster_endpoint
@@ -7,7 +11,7 @@ provider "helm" {
     exec = {
       api_version = "client.authentication.k8s.io/v1beta1"
       command     = "aws"
-      args        = ["eks", "get-token", "--cluster-name", var.cluster_name]
+      args        = local.eks_token_args
     }
   }
 }
@@ -19,7 +23,7 @@ provider "kubernetes" {
   exec {
     api_version = "client.authentication.k8s.io/v1beta1"
     command     = "aws"
-    args        = ["eks", "get-token", "--cluster-name", var.cluster_name]
+    args        = local.eks_token_args
   }
 }
 

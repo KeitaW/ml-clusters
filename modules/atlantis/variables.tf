@@ -43,6 +43,12 @@ variable "atlantis_repo_allowlist" {
   default     = ["github.com/your-org/ml-clusters"]
 }
 
+variable "assume_role_arn" {
+  description = "IAM role ARN to assume when authenticating to the EKS cluster"
+  type        = string
+  default     = ""
+}
+
 variable "tags" {
   description = "Tags to apply to resources"
   type        = map(string)
