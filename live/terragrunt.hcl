@@ -50,23 +50,9 @@ generate "provider" {
   EOF
 }
 
-# Generate version constraints
-generate "versions" {
-  path      = "versions.tf"
-  if_exists = "overwrite_terragrunt"
-  contents  = <<-EOF
-    terraform {
-      required_version = ">= 1.10.0"
-
-      required_providers {
-        aws = {
-          source  = "hashicorp/aws"
-          version = "~> 6.0"
-        }
-      }
-    }
-  EOF
-}
+# Note: version constraints are defined in each module's versions.tf.
+# Modules requiring additional providers (parallelcluster, hyperpod) have
+# their own required_providers blocks.
 
 # Common inputs passed to all modules
 inputs = {
