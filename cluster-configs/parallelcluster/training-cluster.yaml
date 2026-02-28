@@ -1,0 +1,61 @@
+Region: us-east-1
+Image:
+  Os: ubuntu2204
+HeadNode:
+  InstanceType: m5.xlarge
+  Networking:
+    SubnetId: ${head_node_subnet_id}
+  Iam:
+    AdditionalIamPolicies:
+      - Policy: arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+Scheduling:
+  Scheduler: slurm
+  ScalingStrategy: best-effort
+  SlurmQueues:
+    - Name: gpu-ondemand
+      CapacityType: ONDEMAND
+      ComputeResources:
+        - Name: p5-nodes
+          InstanceType: p5.48xlarge
+          MinCount: 0
+          MaxCount: 32
+          Efa:
+            Enabled: true
+          HealthChecks:
+            Gpu:
+              Enabled: true
+      Networking:
+        SubnetIds:
+          - ${compute_subnet_id}
+        PlacementGroup:
+          Enabled: true
+    - Name: gpu-capacity-block
+      CapacityType: CAPACITY_BLOCK
+      ComputeResources:
+        - Name: p5-reserved
+          InstanceType: p5.48xlarge
+          MinCount: 8
+          MaxCount: 8
+          CapacityReservationTarget:
+            CapacityReservationId: ${capacity_reservation_id}
+          Efa:
+            Enabled: true
+          HealthChecks:
+            Gpu:
+              Enabled: true
+      Networking:
+        SubnetIds:
+          - ${compute_subnet_id}
+        PlacementGroup:
+          Enabled: true
+SharedStorage:
+  - Name: fsx-training
+    StorageType: FsxLustre
+    MountDir: /fsx
+    FsxLustreSettings:
+      FileSystemId: ${fsx_filesystem_id}
+  - Name: efs-home
+    StorageType: Efs
+    MountDir: /home
+    EfsSettings:
+      FileSystemId: ${efs_filesystem_id}
