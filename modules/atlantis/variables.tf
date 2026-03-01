@@ -49,6 +49,24 @@ variable "assume_role_arn" {
   default     = ""
 }
 
+variable "github_user" {
+  description = "GitHub username for Atlantis"
+  type        = string
+  sensitive   = true
+}
+
+variable "github_token" {
+  description = "GitHub PAT for Atlantis"
+  type        = string
+  sensitive   = true
+}
+
+variable "kms_key_arn" {
+  description = "KMS key ARN for encrypting the Secrets Manager secret"
+  type        = string
+  default     = ""
+}
+
 variable "tags" {
   description = "Tags to apply to resources"
   type        = map(string)

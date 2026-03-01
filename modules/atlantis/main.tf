@@ -32,6 +32,39 @@ resource "kubernetes_namespace_v1" "atlantis" {
   }
 }
 
+resource "random_password" "webhook_secret" {
+  length  = 32
+  special = false
+}
+
+resource "aws_secretsmanager_secret" "atlantis_github" {
+  name       = "atlantis/github-credentials"
+  kms_key_id = var.kms_key_arn
+  tags       = var.tags
+}
+
+resource "aws_secretsmanager_secret_version" "atlantis_github" {
+  secret_id = aws_secretsmanager_secret.atlantis_github.id
+  secret_string = jsonencode({
+    ATLANTIS_GH_USER           = var.github_user
+    ATLANTIS_GH_TOKEN          = var.github_token
+    ATLANTIS_GH_WEBHOOK_SECRET = random_password.webhook_secret.result
+  })
+}
+
+resource "kubernetes_secret_v1" "atlantis_github" {
+  metadata {
+    name      = "atlantis-github-credentials"
+    namespace = kubernetes_namespace_v1.atlantis.metadata[0].name
+  }
+
+  data = {
+    ATLANTIS_GH_USER           = var.github_user
+    ATLANTIS_GH_TOKEN          = var.github_token
+    ATLANTIS_GH_WEBHOOK_SECRET = random_password.webhook_secret.result
+  }
+}
+
 resource "helm_release" "atlantis" {
   name       = "atlantis"
   repository = "https://runatlantis.github.io/helm-charts"
@@ -44,7 +77,11 @@ resource "helm_release" "atlantis" {
     service = {
       type = "ClusterIP"
     }
-    dataStorage = "10Gi"
+    volumeClaim = {
+      enabled          = true
+      dataStorage      = "10Gi"
+      storageClassName = "gp2"
+    }
     ingress = {
       enabled = true
       annotations = {
@@ -61,5 +98,8 @@ resource "helm_release" "atlantis" {
         "eks.amazonaws.com/role-arn" = ""
       }
     }
+    loadEnvFromSecrets = ["atlantis-github-credentials"]
   })]
+
+  depends_on = [kubernetes_secret_v1.atlantis_github]
 }
