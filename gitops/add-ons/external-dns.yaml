@@ -22,7 +22,7 @@ spec:
           create: true
           name: external-dns
           annotations:
-            eks.amazonaws.com/role-arn: EXTERNAL_DNS_ROLE_ARN_PLACEHOLDER
+            eks.amazonaws.com/role-arn: arn:aws:iam::483026362307:role/ExternalDNSRole
         sources:
           - ingress
   destination:
