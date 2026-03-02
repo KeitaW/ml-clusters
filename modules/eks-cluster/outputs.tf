@@ -47,3 +47,8 @@ output "karpenter_instance_profile_name" {
   description = "The name of the Karpenter instance profile"
   value       = module.karpenter.instance_profile_name
 }
+
+output "ebs_csi_role_arn" {
+  description = "IAM role ARN for the EBS CSI driver"
+  value       = aws_iam_role.ebs_csi.arn
+}
