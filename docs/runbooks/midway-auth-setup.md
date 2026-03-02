@@ -32,7 +32,9 @@ Before deploying, complete these manual steps in order:
 - [ ] Step 2: Register domain via SuperNova
 - [ ] Step 3: Create Federate service profile
 - [ ] Step 4: Create external-dns IRSA role
-- [ ] Step 5: Update external-dns placeholder in gitops
+- [ ] Step 5: Create ALB controller IRSA role
+- [ ] Step 6: Tag subnets for ALB auto-discovery
+- [ ] Step 7: Update external-dns placeholder in gitops
 
 ---
 
@@ -40,28 +42,18 @@ Before deploying, complete these manual steps in order:
 
 SuperNova requires an IAM role named `Nova-DO-NOT-DELETE` in your account to verify domain ownership and manage Route53 records.
 
-### 1.1 Navigate to IAM in the AWS Console
+### 1.1 Get the exact trust policy from SuperNova
+
+1. Go to **https://supernova.amazon.dev/**
+2. Start the domain registration flow (Step 2 below)
+3. SuperNova will display the **exact IAM role trust policy JSON** you need, including the correct principal ARN
+4. **Copy that JSON directly** — do not use a template, as the trust principal format may change over time
+
+### 1.2 Create the role in IAM
 
 Open the [IAM Console](https://us-east-1.console.aws.amazon.com/iam/home?region=us-east-1#/roles) in account 483026362307.
 
-### 1.2 Create the role
-
-Click **Create role** → **Custom trust policy** and paste:
-
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Principal": {
-        "Service": "nova.aws.internal"
-      },
-      "Action": "sts:AssumeRole"
-    }
-  ]
-}
-```
+Click **Create role** → **Custom trust policy** → paste the trust policy JSON from SuperNova.
 
 Click **Next**.
 
@@ -74,40 +66,19 @@ Search and attach these two AWS managed policies:
 
 ### 1.4 Name the role
 
-- Role name: **`Nova-DO-NOT-DELETE`** (exact name required)
+- Role name: **`Nova-DO-NOT-DELETE`** (exact name required by SuperNova)
 - Click **Create role**
 
-### 1.5 Alternatively, use the CLI
-
-```bash
-# Assume TerraformExecutionRole or use admin credentials for account 483026362307
-aws iam create-role \
-  --role-name Nova-DO-NOT-DELETE \
-  --assume-role-policy-document '{
-    "Version": "2012-10-17",
-    "Statement": [{
-      "Effect": "Allow",
-      "Principal": {"Service": "nova.aws.internal"},
-      "Action": "sts:AssumeRole"
-    }]
-  }' \
-  --description "Required by SuperNova for domain verification and Route53 management"
-
-aws iam attach-role-policy \
-  --role-name Nova-DO-NOT-DELETE \
-  --policy-arn arn:aws:iam::aws:policy/SecurityAudit
-
-aws iam attach-role-policy \
-  --role-name Nova-DO-NOT-DELETE \
-  --policy-arn arn:aws:iam::aws:policy/AmazonRoute53FullAccess
-```
-
-### 1.6 Verify
+### 1.5 Verify
 
 ```bash
 aws iam get-role --role-name Nova-DO-NOT-DELETE --query 'Role.Arn'
 # Expected: arn:aws:iam::483026362307:role/Nova-DO-NOT-DELETE
 ```
+
+### 1.6 Return to SuperNova
+
+Go back to the SuperNova domain registration page and continue — it will now detect the role.
 
 ---
 
@@ -343,7 +314,116 @@ aws iam get-role --role-name ExternalDNSRole --query 'Role.Arn'
 
 ---
 
-## Step 5: Update External-DNS GitOps Config
+## Step 5: Create the ALB Controller IRSA Role
+
+The AWS Load Balancer Controller needs IAM permissions to create ALBs, target groups, and manage security groups. Without IRSA, it falls back to EC2 instance metadata which may not be available.
+
+### 5.1 Download the upstream IAM policy
+
+```bash
+curl -sL https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/v2.11.0/docs/install/iam_policy.json \
+  -o /tmp/alb-iam-policy.json
+```
+
+### 5.2 Create the IAM policy
+
+```bash
+aws iam create-policy \
+  --policy-name AWSLoadBalancerControllerIAMPolicy \
+  --policy-document file:///tmp/alb-iam-policy.json \
+  --description "IAM policy for AWS Load Balancer Controller v2.11.0"
+```
+
+### 5.3 Create the IRSA role
+
+```bash
+ACCOUNT_ID=483026362307
+OIDC_PROVIDER=$(aws eks describe-cluster \
+  --name ml-training-main-us-east-1 \
+  --query "cluster.identity.oidc.issuer" \
+  --output text | sed 's|https://||')
+
+cat > /tmp/alb-trust-policy.json << TRUST
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "Federated": "arn:aws:iam::${ACCOUNT_ID}:oidc-provider/${OIDC_PROVIDER}"
+      },
+      "Action": "sts:AssumeRoleWithWebIdentity",
+      "Condition": {
+        "StringEquals": {
+          "${OIDC_PROVIDER}:aud": "sts.amazonaws.com",
+          "${OIDC_PROVIDER}:sub": "system:serviceaccount:kube-system:aws-load-balancer-controller"
+        }
+      }
+    }
+  ]
+}
+TRUST
+
+aws iam create-role \
+  --role-name AWSLoadBalancerControllerRole \
+  --assume-role-policy-document file:///tmp/alb-trust-policy.json \
+  --description "IRSA role for AWS Load Balancer Controller on EKS"
+
+aws iam attach-role-policy \
+  --role-name AWSLoadBalancerControllerRole \
+  --policy-arn "arn:aws:iam::${ACCOUNT_ID}:policy/AWSLoadBalancerControllerIAMPolicy"
+```
+
+### 5.4 Annotate the service account
+
+After installing the ALB controller via Helm, annotate its service account:
+
+```bash
+kubectl annotate serviceaccount -n kube-system aws-load-balancer-controller \
+  eks.amazonaws.com/role-arn=arn:aws:iam::483026362307:role/AWSLoadBalancerControllerRole
+
+kubectl rollout restart deployment -n kube-system aws-load-balancer-controller
+```
+
+---
+
+## Step 6: Tag Subnets for ALB Auto-Discovery
+
+The ALB controller uses subnet tags to discover where to place the ALB. Without these tags, it fails with `couldn't auto-discover subnets`.
+
+### 6.1 Tag public subnets
+
+Public subnets (with internet gateway routes) need `kubernetes.io/role/elb=1`:
+
+```bash
+# Find public subnets in the VPC
+VPC_ID=vpc-02809940b6e2aa557
+
+# Tag public subnets
+aws ec2 create-tags \
+  --resources subnet-0b8d375e4475cfead subnet-0841a88eacb5a039f \
+  --tags Key=kubernetes.io/role/elb,Value=1
+```
+
+### 6.2 Tag private subnets (optional, for internal load balancers)
+
+```bash
+aws ec2 create-tags \
+  --resources subnet-0f4105bb59e3c0e39 subnet-0d23000c7357fa612 \
+  --tags Key=kubernetes.io/role/internal-elb,Value=1
+```
+
+### 6.3 Verify
+
+```bash
+aws ec2 describe-subnets --filters "Name=vpc-id,Values=$VPC_ID" \
+  --query "Subnets[*].{SubnetId:SubnetId,Tags:Tags[?Key=='kubernetes.io/role/elb'].Value|[0]}" \
+  --output table
+```
+
+---
+
+## Step 7: Update External-DNS GitOps Config
 
 Replace the placeholder in the external-dns ArgoCD application manifest.
 
@@ -557,6 +637,8 @@ kubectl logs -n kube-system -l app.kubernetes.io/name=aws-load-balancer-controll
 ```
 
 Common issues:
+- **No IRSA role**: Controller logs show `no EC2 IMDS role found`. See Step 5 to create the IRSA role and annotate the service account.
+- **Missing subnet tags**: Controller logs show `couldn't auto-discover subnets: unable to resolve at least one subnet (0 match VPC and tags: [kubernetes.io/role/elb])`. See Step 6 to tag subnets.
 - Controller missing IAM permissions for `cognito-idp:DescribeUserPoolClient`
 - Ingress class annotation mismatch
 - Certificate ARN invalid or not in ISSUED state

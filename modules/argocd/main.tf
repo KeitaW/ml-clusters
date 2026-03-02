@@ -66,8 +66,8 @@ resource "helm_release" "argocd" {
           "alb.ingress.kubernetes.io/auth-on-unauthenticated-request" = "authenticate"
           "external-dns.alpha.kubernetes.io/hostname"                  = var.argocd_hostname
         } : {}
-        hosts    = var.argocd_hostname != "" ? [var.argocd_hostname] : []
-        paths    = ["/"]
+        hostname = var.argocd_hostname
+        path     = "/"
         pathType = "Prefix"
       }
     }
