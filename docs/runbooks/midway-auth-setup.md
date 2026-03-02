@@ -158,12 +158,15 @@ Fill in the following fields:
 |-------|-------|
 | **Redirect URI** | `https://ml-clusters-mlkeita.auth.us-east-1.amazoncognito.com/oauth2/idpresponse` |
 | **Client Secret** | Enable (check the box) |
+| **PKCE Enabled** | **Disable** (uncheck the box) |
 
 The redirect URI follows the pattern: `https://{cognito_domain_prefix}.auth.{region}.amazoncognito.com/oauth2/idpresponse`
 
 Where:
 - `cognito_domain_prefix` = `ml-clusters-mlkeita` (from `live/main-account/us-east-1/midway-auth/terragrunt.hcl`)
 - `region` = `us-east-1`
+
+**Important**: PKCE must be **disabled**. AWS Cognito does not send `code_challenge` parameters when acting as an OIDC client to upstream IdPs. If PKCE is enabled, Federate will reject the callback from Midway with `invalid_request` (400). The client secret provides sufficient security for confidential clients (RFC 6749 §2.1).
 
 ### 3.4 Configure discovery
 
@@ -653,6 +656,22 @@ Common issues:
 - IRSA role not correctly associated (check service account annotations)
 - Route53 zone ID not matching the domain filter
 - Policy missing `route53:ChangeResourceRecordSets` for the correct zone
+
+### Federate returns "invalid_request" (400)
+
+```json
+{"error": "invalid_request", "error_description": "Invalid request", "status": 400}
+```
+
+This error occurs at Federate's `/api/v1/intermediate` endpoint after Midway authenticates the user. The most common cause is **PKCE being enabled** on the Federate service profile.
+
+**Fix**: Go to [ep.federate.a2z.com](https://ep.federate.a2z.com/profile/ml-clusters-mlkeita), edit the profile, and set **PKCE Enabled** to `false`. AWS Cognito does not send `code_challenge` parameters to upstream OIDC IdPs, so PKCE must be disabled.
+
+You can verify the profile configuration via:
+```
+https://ep.federate.a2z.com/serviceprofile_microservice/v1/serviceProfiles/<client-id>
+```
+Check that `pkceRequired` is `false`.
 
 ### Cognito login shows "error_description=unauthorized"
 
