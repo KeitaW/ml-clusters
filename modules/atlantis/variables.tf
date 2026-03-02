@@ -72,3 +72,45 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "enable_cognito_auth" {
+  description = "Enable Cognito authentication on the ALB for non-webhook paths"
+  type        = bool
+  default     = false
+}
+
+variable "acm_certificate_arn" {
+  description = "ARN of the ACM certificate for HTTPS on the ALB"
+  type        = string
+  default     = ""
+}
+
+variable "atlantis_hostname" {
+  description = "Hostname for Atlantis (e.g., atlantis.mlkeita.people.aws.dev)"
+  type        = string
+  default     = ""
+}
+
+variable "alb_ingress_group_name" {
+  description = "ALB Ingress Group name for sharing ALB across services"
+  type        = string
+  default     = "ml-cluster-services"
+}
+
+variable "cognito_user_pool_arn" {
+  description = "ARN of the Cognito User Pool for ALB authentication"
+  type        = string
+  default     = ""
+}
+
+variable "cognito_app_client_id" {
+  description = "Cognito App Client ID for Atlantis"
+  type        = string
+  default     = ""
+}
+
+variable "cognito_user_pool_domain" {
+  description = "Cognito User Pool domain for the hosted UI"
+  type        = string
+  default     = ""
+}

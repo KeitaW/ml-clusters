@@ -14,6 +14,10 @@ dependency "iam" {
   config_path = "../iam"
 }
 
+dependency "midway_auth" {
+  config_path = "../midway-auth"
+}
+
 inputs = {
   cluster_name           = dependency.eks.outputs.cluster_name
   cluster_endpoint       = dependency.eks.outputs.cluster_endpoint
@@ -22,4 +26,13 @@ inputs = {
   kms_key_arn            = dependency.iam.outputs.kms_key_arn
   github_user            = "KeitaW"
   # github_token: set via TF_VAR_github_token environment variable at apply time
+
+  # Midway authentication
+  enable_cognito_auth      = true
+  acm_certificate_arn      = dependency.midway_auth.outputs.acm_certificate_arn
+  atlantis_hostname        = "atlantis.mlkeita.people.aws.dev"
+  alb_ingress_group_name   = "ml-cluster-services"
+  cognito_user_pool_arn    = dependency.midway_auth.outputs.cognito_user_pool_arn
+  cognito_app_client_id    = dependency.midway_auth.outputs.cognito_app_client_ids["atlantis"]
+  cognito_user_pool_domain = dependency.midway_auth.outputs.cognito_user_pool_domain
 }

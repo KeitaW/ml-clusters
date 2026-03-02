@@ -88,7 +88,7 @@ projects:
     workflow: terragrunt
     execution_order_group: 3
 
-  # --- Execution Order Group 4: Cluster Orchestrators ---
+  # --- Execution Order Group 4: Cluster Orchestrators + Auth ---
   - name: main-us-east-1-parallelcluster
     dir: live/main-account/us-east-1/parallelcluster
     workflow: terragrunt
@@ -96,6 +96,11 @@ projects:
 
   - name: secondary-us-west-2-hyperpod-slurm
     dir: live/secondary-account/us-west-2/hyperpod-slurm
+    workflow: terragrunt
+    execution_order_group: 4
+
+  - name: main-us-east-1-midway-auth
+    dir: live/main-account/us-east-1/midway-auth
     workflow: terragrunt
     execution_order_group: 4
 
