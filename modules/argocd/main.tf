@@ -45,7 +45,30 @@ resource "helm_release" "argocd" {
   values = [yamlencode({
     server = {
       service = {
-        type = "LoadBalancer"
+        type = "ClusterIP"
+      }
+      ingress = {
+        enabled = var.enable_cognito_auth
+        annotations = var.enable_cognito_auth ? {
+          "kubernetes.io/ingress.class"                               = "alb"
+          "alb.ingress.kubernetes.io/scheme"                          = "internet-facing"
+          "alb.ingress.kubernetes.io/target-type"                     = "ip"
+          "alb.ingress.kubernetes.io/listen-ports"                    = "[{\"HTTPS\":443}]"
+          "alb.ingress.kubernetes.io/certificate-arn"                 = var.acm_certificate_arn
+          "alb.ingress.kubernetes.io/group.name"                      = var.alb_ingress_group_name
+          "alb.ingress.kubernetes.io/healthcheck-path"                = "/healthz"
+          "alb.ingress.kubernetes.io/auth-type"                       = "cognito"
+          "alb.ingress.kubernetes.io/auth-idp-cognito"                = jsonencode({
+            UserPoolArn      = var.cognito_user_pool_arn
+            UserPoolClientId = var.cognito_app_client_id
+            UserPoolDomain   = var.cognito_user_pool_domain
+          })
+          "alb.ingress.kubernetes.io/auth-on-unauthenticated-request" = "authenticate"
+          "external-dns.alpha.kubernetes.io/hostname"                  = var.argocd_hostname
+        } : {}
+        hostname = var.argocd_hostname
+        path     = "/"
+        pathType = "Prefix"
       }
     }
     configs = {

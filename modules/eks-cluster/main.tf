@@ -23,7 +23,9 @@ module "eks" {
         enableNetworkPolicy = "true"
       })
     }
-    aws-ebs-csi-driver = {}
+    aws-ebs-csi-driver = {
+      service_account_role_arn = aws_iam_role.ebs_csi.arn
+    }
   }
 
   # System node group only - GPU nodes managed by Karpenter
@@ -38,6 +40,38 @@ module "eks" {
   }
 
   tags = var.tags
+}
+
+# IRSA role for the EBS CSI driver addon
+data "aws_iam_policy_document" "ebs_csi_trust" {
+  statement {
+    actions = ["sts:AssumeRoleWithWebIdentity"]
+    principals {
+      type        = "Federated"
+      identifiers = [module.eks.oidc_provider_arn]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "${replace(module.eks.oidc_provider, "https://", "")}:sub"
+      values   = ["system:serviceaccount:kube-system:ebs-csi-controller-sa"]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "${replace(module.eks.oidc_provider, "https://", "")}:aud"
+      values   = ["sts.amazonaws.com"]
+    }
+  }
+}
+
+resource "aws_iam_role" "ebs_csi" {
+  name               = "AmazonEKS_EBS_CSI_DriverRole"
+  assume_role_policy = data.aws_iam_policy_document.ebs_csi_trust.json
+  tags               = var.tags
+}
+
+resource "aws_iam_role_policy_attachment" "ebs_csi" {
+  role       = aws_iam_role.ebs_csi.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
 }
 
 # Karpenter IAM resources via the EKS module's Karpenter submodule

@@ -8,3 +8,4 @@ resources:
   - nvidia-device-plugin.yaml
   - efa-device-plugin.yaml
   - aws-lb-controller.yaml
+  - external-dns.yaml
