@@ -77,7 +77,7 @@ resource "aws_cognito_identity_provider" "federate" {
     client_secret             = var.federate_client_secret
     oidc_issuer               = var.federate_oidc_issuer
     attributes_request_method = "GET"
-    authorize_scopes          = "openid profile email"
+    authorize_scopes          = "openid"
   }
 
   attribute_mapping = {
@@ -106,7 +106,7 @@ resource "aws_cognito_user_pool_client" "services" {
   user_pool_id                         = aws_cognito_user_pool.main.id
   generate_secret                      = true
   allowed_oauth_flows                  = ["code"]
-  allowed_oauth_scopes                 = ["openid", "email", "profile"]
+  allowed_oauth_scopes                 = ["openid"]
   allowed_oauth_flows_user_pool_client = true
   callback_urls                        = each.value.callback_urls
   logout_urls                          = each.value.logout_urls
