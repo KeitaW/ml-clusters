@@ -34,6 +34,12 @@ variable "is_production" {
   default     = true
 }
 
+variable "eks_cluster_name" {
+  description = "EKS cluster name for Karpenter subnet discovery. Adds karpenter.sh/discovery tag to private subnets."
+  type        = string
+  default     = ""
+}
+
 variable "tags" {
   description = "Additional tags"
   type        = map(string)

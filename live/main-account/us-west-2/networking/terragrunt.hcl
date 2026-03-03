@@ -8,5 +8,7 @@ include "envcommon" {
 }
 
 inputs = {
-  is_production = true
+  # Single NAT gateway to avoid NAT quota limits in us-west-2
+  is_production    = false
+  eks_cluster_name = "ml-inference-main-us-west-2"
 }

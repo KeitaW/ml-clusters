@@ -39,6 +39,11 @@ module "eks" {
     }
   }
 
+  # Tag the node security group for Karpenter discovery
+  node_security_group_tags = {
+    "karpenter.sh/discovery" = var.cluster_name
+  }
+
   tags = var.tags
 }
 
@@ -63,8 +68,13 @@ data "aws_iam_policy_document" "ebs_csi_trust" {
   }
 }
 
+locals {
+  # Use cluster-name-suffixed IAM names for multi-cluster support
+  iam_suffix = var.cluster_name
+}
+
 resource "aws_iam_role" "ebs_csi" {
-  name               = "AmazonEKS_EBS_CSI_DriverRole"
+  name               = "EBS-CSI-${local.iam_suffix}"
   assume_role_policy = data.aws_iam_policy_document.ebs_csi_trust.json
   tags               = var.tags
 }
@@ -96,14 +106,14 @@ data "aws_iam_policy_document" "alb_controller_trust" {
 }
 
 resource "aws_iam_role" "alb_controller" {
-  name               = "AWSLoadBalancerControllerRole"
+  name               = "ALBController-${var.cluster_name}"
   assume_role_policy = data.aws_iam_policy_document.alb_controller_trust.json
   tags               = var.tags
 }
 
 resource "aws_iam_policy" "alb_controller" {
-  name        = "AWSLoadBalancerControllerIAMPolicy"
-  description = "IAM policy for AWS Load Balancer Controller v2.11.0"
+  name        = "ALBControllerPolicy-${var.cluster_name}"
+  description = "IAM policy for AWS Load Balancer Controller"
   policy      = file("${path.module}/policies/alb-controller-iam-policy.json")
 }
 
@@ -150,15 +160,15 @@ data "aws_iam_policy_document" "external_dns" {
 
 resource "aws_iam_role" "external_dns" {
   count              = var.route53_zone_id != "" ? 1 : 0
-  name               = "ExternalDNSRole"
+  name               = "ExternalDNS-${var.cluster_name}"
   assume_role_policy = data.aws_iam_policy_document.external_dns_trust[0].json
   tags               = var.tags
 }
 
 resource "aws_iam_policy" "external_dns" {
   count       = var.route53_zone_id != "" ? 1 : 0
-  name        = "ExternalDNSPolicy"
-  description = "Allows external-dns to manage Route53 records for mlkeita.people.aws.dev"
+  name        = "ExternalDNSPolicy-${var.cluster_name}"
+  description = "Allows external-dns to manage Route53 records"
   policy      = data.aws_iam_policy_document.external_dns[0].json
 }
 
@@ -193,14 +203,14 @@ data "aws_iam_policy_document" "adot_trust" {
 
 resource "aws_iam_role" "adot" {
   count              = var.amp_workspace_arn != "" ? 1 : 0
-  name               = "ADOTCollectorRole"
+  name               = "ADOTCollector-${var.cluster_name}"
   assume_role_policy = data.aws_iam_policy_document.adot_trust[0].json
   tags               = var.tags
 }
 
 resource "aws_iam_policy" "adot" {
   count = var.amp_workspace_arn != "" ? 1 : 0
-  name  = "ADOTCollectorPolicy"
+  name  = "ADOTCollectorPolicy-${var.cluster_name}"
 
   policy = jsonencode({
     Version = "2012-10-17"

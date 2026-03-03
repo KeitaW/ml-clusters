@@ -8,11 +8,12 @@ include "envcommon" {
 }
 
 dependency "iam" {
-  config_path = "../../main-account/us-east-1/iam"
+  config_path = "../../us-east-1/iam"
 }
 
 inputs = {
-  bucket_name                = "ml-data-replica-483026362307-us-west-2"
-  kms_key_arn                = dependency.iam.outputs.kms_key_arn
-  replication_source_role_arns = [dependency.iam.outputs.s3_replication_role_arn]
+  bucket_name = "ml-data-replica-483026362307-us-west-2"
+  kms_key_arn = dependency.iam.outputs.kms_key_arn
+  # S3 replication deferred — IAM replication role not yet created
+  # replication_source_role_arns = [dependency.iam.outputs.s3_replication_role_arn]
 }

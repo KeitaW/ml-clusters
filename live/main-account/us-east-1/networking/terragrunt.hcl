@@ -8,5 +8,6 @@ include "envcommon" {
 }
 
 inputs = {
-  is_production = true
+  is_production    = true
+  eks_cluster_name = "ml-training-main-us-east-1"
 }

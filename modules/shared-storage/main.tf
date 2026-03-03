@@ -71,6 +71,10 @@ resource "aws_fsx_data_repository_association" "main" {
   data_repository_path = "s3://${local.s3_bucket_name}"
   file_system_path     = "/data"
 
+  timeouts {
+    create = "30m"
+  }
+
   s3 {
     auto_import_policy {
       events = ["NEW", "CHANGED", "DELETED"]

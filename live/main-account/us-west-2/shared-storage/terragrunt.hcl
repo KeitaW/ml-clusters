@@ -12,7 +12,7 @@ dependency "networking" {
 }
 
 dependency "iam" {
-  config_path = "../../main-account/us-east-1/iam"
+  config_path = "../iam"
 }
 
 dependency "s3_replica" {
