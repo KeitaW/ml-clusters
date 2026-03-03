@@ -40,7 +40,7 @@ variable "github_repo" {
 variable "atlantis_repo_allowlist" {
   description = "List of repositories Atlantis is allowed to operate on"
   type        = list(string)
-  default     = ["github.com/your-org/ml-clusters"]
+  default     = ["github.com/KeitaW/ml-clusters"]
 }
 
 variable "assume_role_arn" {
