@@ -18,12 +18,6 @@ variable "private_subnet_ids" {
   type        = list(string)
 }
 
-variable "eks_cluster_name" {
-  description = "Name of the EKS cluster to monitor"
-  type        = string
-  default     = ""
-}
-
 variable "notification_email" {
   description = "Email address for alarm notifications via SNS"
   type        = string
