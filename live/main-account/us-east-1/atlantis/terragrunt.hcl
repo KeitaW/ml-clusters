@@ -25,6 +25,7 @@ inputs = {
   assume_role_arn        = "arn:aws:iam::483026362307:role/TerraformExecutionRole"
   kms_key_arn            = dependency.iam.outputs.kms_key_arn
   github_user            = "KeitaW"
+  tags                   = { "test" = "atlantis-e2e-webhook" }
   github_token           = get_env("GITHUB_PERSONAL_ACCESS_TOKEN", "")
 
   # Midway authentication
