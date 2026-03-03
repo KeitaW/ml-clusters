@@ -87,9 +87,7 @@ spec:
                         replacement: /api/v1/nodes/$${1}/proxy/metrics/cadvisor
           exporters:
             prometheusremotewrite:
-              # TODO: Update after monitoring module is deployed:
-              # terragrunt output -raw amp_workspace_endpoint from live/main-account/us-east-1/monitoring
-              endpoint: AMP_REMOTE_WRITE_ENDPOINT
+              endpoint: https://aps-workspaces.us-east-1.amazonaws.com/workspaces/ws-b230cb85-8264-40fa-99d2-33cfc127307a/api/v1/remote_write
               auth:
                 authenticator: sigv4auth
           service:

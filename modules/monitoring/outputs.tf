@@ -3,6 +3,11 @@ output "amp_workspace_id" {
   value       = aws_prometheus_workspace.main.id
 }
 
+output "amp_workspace_arn" {
+  description = "ARN of the Amazon Managed Prometheus workspace"
+  value       = aws_prometheus_workspace.main.arn
+}
+
 output "amp_workspace_endpoint" {
   description = "Prometheus endpoint for the AMP workspace"
   value       = aws_prometheus_workspace.main.prometheus_endpoint
