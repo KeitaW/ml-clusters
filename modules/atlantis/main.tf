@@ -92,6 +92,13 @@ resource "helm_release" "atlantis" {
       }
     }
     loadEnvFromSecrets = ["atlantis-github-credentials"]
+    repoConfig = yamlencode({
+      repos = [{
+        id                  = "/.*/"
+        allowed_overrides   = ["workflow"]
+        allow_custom_workflows = true
+      }]
+    })
   })]
 
   depends_on = [kubernetes_secret_v1.atlantis_github]
