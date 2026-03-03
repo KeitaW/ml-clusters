@@ -74,6 +74,7 @@ resource "helm_release" "atlantis" {
 
   values = [yamlencode({
     orgAllowlist = join(",", var.atlantis_repo_allowlist)
+    atlantisUrl  = "https://${var.atlantis_hostname}"
     service = {
       type = "ClusterIP"
     }
@@ -83,23 +84,7 @@ resource "helm_release" "atlantis" {
       storageClassName = "gp2"
     }
     ingress = {
-      enabled = true
-      annotations = merge(
-        {
-          "kubernetes.io/ingress.class"            = "alb"
-          "alb.ingress.kubernetes.io/scheme"       = "internet-facing"
-          "alb.ingress.kubernetes.io/target-type"  = "ip"
-          "alb.ingress.kubernetes.io/listen-ports" = "[{\"HTTPS\":443}]"
-        },
-        var.enable_cognito_auth ? {
-          "alb.ingress.kubernetes.io/certificate-arn" = var.acm_certificate_arn
-          "alb.ingress.kubernetes.io/group.name"      = var.alb_ingress_group_name
-          "alb.ingress.kubernetes.io/group.order"     = "10"
-        } : {}
-      )
-      host     = var.atlantis_hostname
-      path     = "/events"
-      pathType = "Prefix"
+      enabled = false
     }
     serviceAccount = {
       annotations = {
@@ -110,6 +95,48 @@ resource "helm_release" "atlantis" {
   })]
 
   depends_on = [kubernetes_secret_v1.atlantis_github]
+}
+
+# Terraform-managed webhook ingress (unauthenticated - GitHub webhooks must bypass Cognito)
+resource "kubernetes_ingress_v1" "atlantis_webhook" {
+  count = var.enable_cognito_auth ? 1 : 0
+
+  metadata {
+    name      = "atlantis-webhook"
+    namespace = kubernetes_namespace_v1.atlantis.metadata[0].name
+    annotations = {
+      "kubernetes.io/ingress.class"               = "alb"
+      "alb.ingress.kubernetes.io/scheme"           = "internet-facing"
+      "alb.ingress.kubernetes.io/target-type"      = "ip"
+      "alb.ingress.kubernetes.io/listen-ports"     = "[{\"HTTPS\":443}]"
+      "alb.ingress.kubernetes.io/certificate-arn"  = var.acm_certificate_arn
+      "alb.ingress.kubernetes.io/group.name"       = var.alb_ingress_group_name
+      "alb.ingress.kubernetes.io/group.order"      = "10"
+      "alb.ingress.kubernetes.io/healthcheck-path" = "/healthz"
+    }
+  }
+
+  spec {
+    rule {
+      host = var.atlantis_hostname
+      http {
+        path {
+          path      = "/events"
+          path_type = "Prefix"
+          backend {
+            service {
+              name = "atlantis"
+              port {
+                number = 80
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  depends_on = [helm_release.atlantis]
 }
 
 # Separate Ingress for authenticated catch-all path (Cognito auth on all non-webhook paths)
