@@ -3,8 +3,7 @@ kind: Kustomization
 
 resources:
   - karpenter-values.yaml
-  - karpenter-nodepool.yaml
-  - karpenter-ec2nodeclass.yaml
+  - karpenter-config.yaml
   - nvidia-device-plugin.yaml
   - efa-device-plugin.yaml
   - aws-lb-controller.yaml
