@@ -127,10 +127,10 @@ workflows:
         - env:
             name: TERRAGRUNT_TFPATH
             value: terraform
-        - run: terragrunt plan -no-color -out=$PLANFILE
+        - run: /extra-bin/terragrunt plan -no-color -out=$PLANFILE
     apply:
       steps:
         - env:
             name: TERRAGRUNT_TFPATH
             value: terraform
-        - run: terragrunt apply -no-color $PLANFILE
+        - run: /extra-bin/terragrunt apply -no-color $PLANFILE

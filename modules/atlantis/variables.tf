@@ -19,6 +19,12 @@ variable "atlantis_chart_version" {
   default     = "5.12.0"
 }
 
+variable "terragrunt_version" {
+  description = "Version of Terragrunt to install in the Atlantis container"
+  type        = string
+  default     = "0.99.4"
+}
+
 variable "atlantis_namespace" {
   description = "Kubernetes namespace for Atlantis"
   type        = string

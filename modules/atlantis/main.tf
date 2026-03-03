@@ -94,11 +94,31 @@ resource "helm_release" "atlantis" {
     loadEnvFromSecrets = ["atlantis-github-credentials"]
     repoConfig = yamlencode({
       repos = [{
-        id                  = "/.*/"
-        allowed_overrides   = ["workflow"]
+        id                     = "/.*/"
+        allowed_overrides      = ["workflow"]
         allow_custom_workflows = true
       }]
     })
+    initContainers = [{
+      name  = "install-terragrunt"
+      image = "alpine:3.21"
+      command = ["sh", "-c", join(" && ", [
+        "wget -q https://github.com/gruntwork-io/terragrunt/releases/download/v${var.terragrunt_version}/terragrunt_linux_amd64 -O /extra-bin/terragrunt",
+        "chmod +x /extra-bin/terragrunt",
+      ])]
+      volumeMounts = [{
+        name      = "extra-bin"
+        mountPath = "/extra-bin"
+      }]
+    }]
+    extraVolumes = [{
+      name     = "extra-bin"
+      emptyDir = {}
+    }]
+    extraVolumeMounts = [{
+      name      = "extra-bin"
+      mountPath = "/extra-bin"
+    }]
   })]
 
   depends_on = [kubernetes_secret_v1.atlantis_github]
