@@ -129,3 +129,59 @@ resource "kubernetes_secret_v1" "spoke_clusters" {
 
   depends_on = [helm_release.argocd]
 }
+
+# ApplicationSet to bootstrap GitOps add-ons via app-of-apps pattern
+resource "kubernetes_manifest" "cluster_addons_appset" {
+  count = var.enable_applicationset_bootstrap ? 1 : 0
+
+  manifest = {
+    apiVersion = "argoproj.io/v1alpha1"
+    kind       = "ApplicationSet"
+    metadata = {
+      name      = "cluster-addons"
+      namespace = var.argocd_namespace
+    }
+    spec = {
+      goTemplate        = true
+      goTemplateOptions = ["missingkey=error"]
+      generators = [{
+        clusters = {
+          selector = {
+            matchLabels = {
+              "argocd.argoproj.io/secret-type" = "cluster"
+            }
+          }
+        }
+      }]
+      template = {
+        metadata = {
+          name = "addons-{{.name}}"
+        }
+        spec = {
+          project = "default"
+          source = {
+            repoURL        = var.git_repo_url
+            targetRevision  = "main"
+            path           = "gitops/add-ons"
+          }
+          destination = {
+            server    = "{{.server}}"
+            namespace = "kube-system"
+          }
+          syncPolicy = {
+            automated = {
+              prune    = true
+              selfHeal = true
+            }
+            syncOptions = [
+              "CreateNamespace=true",
+              "ServerSideApply=true"
+            ]
+          }
+        }
+      }
+    }
+  }
+
+  depends_on = [helm_release.argocd]
+}

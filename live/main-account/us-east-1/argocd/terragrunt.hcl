@@ -29,4 +29,8 @@ inputs = {
   cognito_user_pool_arn  = dependency.midway_auth.outputs.cognito_user_pool_arn
   cognito_app_client_id  = dependency.midway_auth.outputs.cognito_app_client_ids["argocd"]
   cognito_user_pool_domain = dependency.midway_auth.outputs.cognito_user_pool_domain
+
+  # ApplicationSet bootstrap
+  enable_applicationset_bootstrap = true
+  git_repo_url                    = "https://github.com/KeitaW/ml-clusters.git"
 }

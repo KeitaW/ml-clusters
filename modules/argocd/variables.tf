@@ -88,3 +88,15 @@ variable "cognito_user_pool_domain" {
   type        = string
   default     = ""
 }
+
+variable "enable_applicationset_bootstrap" {
+  description = "Apply the cluster-addons ApplicationSet to bootstrap GitOps add-ons"
+  type        = bool
+  default     = false
+}
+
+variable "git_repo_url" {
+  description = "Git repository URL for ArgoCD ApplicationSet source"
+  type        = string
+  default     = ""
+}

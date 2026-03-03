@@ -36,6 +36,12 @@ variable "authentication_mode" {
   default     = "API_AND_CONFIG_MAP"
 }
 
+variable "route53_zone_id" {
+  description = "Route53 hosted zone ID for External-DNS IAM policy scoping. Leave empty to skip External-DNS IRSA."
+  type        = string
+  default     = ""
+}
+
 variable "tags" {
   description = "Tags to apply to all resources"
   type        = map(string)

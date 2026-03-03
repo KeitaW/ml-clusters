@@ -13,11 +13,8 @@ spec:
       values: |
         replicas: 2
         settings:
-          clusterName: CLUSTER_NAME_PLACEHOLDER
-          interruptionQueue: QUEUE_NAME_PLACEHOLDER
-        serviceAccount:
-          annotations:
-            eks.amazonaws.com/role-arn: ROLE_ARN_PLACEHOLDER
+          clusterName: ml-training-main-us-east-1
+          interruptionQueue: Karpenter-ml-training-main-us-east-1
   destination:
     server: https://kubernetes.default.svc
     namespace: kube-system

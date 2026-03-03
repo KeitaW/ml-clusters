@@ -3,15 +3,15 @@ kind: EC2NodeClass
 metadata:
   name: gpu-training
 spec:
-  role: KARPENTER_NODE_ROLE_PLACEHOLDER
+  role: Karpenter-ml-training-main-us-east-1-2026022812554873630000000b
   amiSelectorTerms:
     - alias: al2023@latest
   subnetSelectorTerms:
     - tags:
-        karpenter.sh/discovery: CLUSTER_NAME_PLACEHOLDER
+        karpenter.sh/discovery: ml-training-main-us-east-1
   securityGroupSelectorTerms:
     - tags:
-        karpenter.sh/discovery: CLUSTER_NAME_PLACEHOLDER
+        karpenter.sh/discovery: ml-training-main-us-east-1
   blockDeviceMappings:
     - deviceName: /dev/xvda
       ebs:

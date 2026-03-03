@@ -52,3 +52,13 @@ output "ebs_csi_role_arn" {
   description = "IAM role ARN for the EBS CSI driver"
   value       = aws_iam_role.ebs_csi.arn
 }
+
+output "alb_controller_role_arn" {
+  description = "IAM role ARN for the AWS Load Balancer Controller"
+  value       = aws_iam_role.alb_controller.arn
+}
+
+output "external_dns_role_arn" {
+  description = "IAM role ARN for External-DNS"
+  value       = var.route53_zone_id != "" ? aws_iam_role.external_dns[0].arn : ""
+}
