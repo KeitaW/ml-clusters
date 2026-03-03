@@ -120,3 +120,8 @@ variable "cognito_user_pool_domain" {
   type        = string
   default     = ""
 }
+
+variable "terraform_execution_role_arn" {
+  description = "ARN of the TerraformExecutionRole that Atlantis assumes for plan/apply"
+  type        = string
+}

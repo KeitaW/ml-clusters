@@ -18,3 +18,8 @@ output "atlantis_webhook_secret" {
   value       = random_password.webhook_secret.result
   sensitive   = true
 }
+
+output "atlantis_pod_identity_role_arn" {
+  description = "ARN of the IAM role used by Atlantis via EKS Pod Identity"
+  value       = aws_iam_role.atlantis_pod_identity.arn
+}

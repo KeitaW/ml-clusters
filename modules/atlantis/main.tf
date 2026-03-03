@@ -65,6 +65,54 @@ resource "kubernetes_secret_v1" "atlantis_github" {
   }
 }
 
+###############################################################################
+# Pod Identity — gives Atlantis pod AWS credentials to run Terraform
+###############################################################################
+
+data "aws_iam_policy_document" "atlantis_pod_identity_trust" {
+  statement {
+    effect = "Allow"
+    principals {
+      type        = "Service"
+      identifiers = ["pods.eks.amazonaws.com"]
+    }
+    actions = ["sts:AssumeRole", "sts:TagSession"]
+  }
+}
+
+resource "aws_iam_role" "atlantis_pod_identity" {
+  name               = "AtlantisPodIdentity-${var.cluster_name}"
+  assume_role_policy = data.aws_iam_policy_document.atlantis_pod_identity_trust.json
+  tags               = var.tags
+}
+
+data "aws_iam_policy_document" "atlantis_terraform" {
+  statement {
+    sid       = "AssumeTerraformExecutionRole"
+    effect    = "Allow"
+    actions   = ["sts:AssumeRole"]
+    resources = [var.terraform_execution_role_arn]
+  }
+}
+
+resource "aws_iam_role_policy" "atlantis_terraform" {
+  name   = "assume-terraform-execution-role"
+  role   = aws_iam_role.atlantis_pod_identity.id
+  policy = data.aws_iam_policy_document.atlantis_terraform.json
+}
+
+resource "aws_eks_pod_identity_association" "atlantis" {
+  cluster_name    = var.cluster_name
+  namespace       = kubernetes_namespace_v1.atlantis.metadata[0].name
+  service_account = "atlantis"
+  role_arn        = aws_iam_role.atlantis_pod_identity.arn
+  tags            = var.tags
+}
+
+###############################################################################
+# Helm Release
+###############################################################################
+
 resource "helm_release" "atlantis" {
   name       = "atlantis"
   repository = "https://runatlantis.github.io/helm-charts"
@@ -87,9 +135,8 @@ resource "helm_release" "atlantis" {
       enabled = false
     }
     serviceAccount = {
-      annotations = {
-        "eks.amazonaws.com/role-arn" = ""
-      }
+      create = true
+      name   = "atlantis"
     }
     loadEnvFromSecrets = ["atlantis-github-credentials"]
     repoConfig = yamlencode({
