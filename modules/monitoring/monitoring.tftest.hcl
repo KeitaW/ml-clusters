@@ -16,30 +16,53 @@ run "prometheus_workspace" {
   }
 }
 
-run "grafana_workspace" {
+run "sns_topic" {
   command = plan
 
   assert {
-    condition     = aws_grafana_workspace.main.name == "ml-grafana-test-us-east-1"
+    condition     = aws_sns_topic.alerts.name == "ml-cluster-alerts-test-us-east-1"
+    error_message = "SNS topic name should follow naming convention"
+  }
+}
+
+run "grafana_disabled_by_default" {
+  command = plan
+
+  assert {
+    condition     = length(aws_grafana_workspace.main) == 0
+    error_message = "Grafana should not be created when enable_grafana is false"
+  }
+
+  assert {
+    condition     = length(aws_iam_role.grafana) == 0
+    error_message = "Grafana IAM role should not be created when enable_grafana is false"
+  }
+}
+
+run "grafana_enabled" {
+  command = plan
+
+  variables {
+    enable_grafana = true
+  }
+
+  assert {
+    condition     = aws_grafana_workspace.main[0].name == "ml-grafana-test-us-east-1"
     error_message = "AMG workspace name should follow naming convention"
   }
 
   assert {
-    condition     = aws_grafana_workspace.main.account_access_type == "CURRENT_ACCOUNT"
+    condition     = aws_grafana_workspace.main[0].account_access_type == "CURRENT_ACCOUNT"
     error_message = "Grafana should only access current account"
   }
 
   assert {
-    condition     = aws_grafana_workspace.main.permission_type == "SERVICE_MANAGED"
-    error_message = "Grafana should use service-managed permissions"
+    condition     = aws_grafana_workspace.main[0].permission_type == "CUSTOMER_MANAGED"
+    error_message = "Grafana should use customer-managed permissions"
   }
-}
-
-run "grafana_iam_role" {
-  command = plan
 
   assert {
-    condition     = aws_iam_role.grafana.name == "ml-grafana-test-us-east-1"
+    condition     = aws_iam_role.grafana[0].name == "ml-grafana-test-us-east-1"
     error_message = "Grafana IAM role name should follow naming convention"
   }
 }
@@ -71,50 +94,44 @@ run "subnet_ip_exhaustion_alarms" {
     condition     = aws_cloudwatch_metric_alarm.subnet_ip_exhaustion["subnet-a"].namespace == "AWS/EC2"
     error_message = "IP alarm should use AWS/EC2 namespace"
   }
+
+  # SNS topic is always created now — alarms always have actions
+  assert {
+    condition     = length(aws_cloudwatch_metric_alarm.subnet_ip_exhaustion["subnet-a"].alarm_actions) == 1
+    error_message = "Subnet alarm should have SNS action"
+  }
 }
 
-run "s3_replication_lag_alarm" {
+run "s3_replication_alarm_skipped_by_default" {
   command = plan
 
   assert {
-    condition     = aws_cloudwatch_metric_alarm.s3_replication_lag.alarm_name == "s3-replication-lag-test-us-east-1"
+    condition     = length(aws_cloudwatch_metric_alarm.s3_replication_lag) == 0
+    error_message = "S3 replication alarm should not be created when bucket name is empty"
+  }
+}
+
+run "s3_replication_alarm_with_config" {
+  command = plan
+
+  variables {
+    s3_replication_bucket_name      = "ml-data-source"
+    s3_replication_dest_bucket_name = "ml-data-dest"
+    s3_replication_rule_id          = "replicate-all"
+  }
+
+  assert {
+    condition     = aws_cloudwatch_metric_alarm.s3_replication_lag[0].alarm_name == "s3-replication-lag-test-us-east-1"
     error_message = "Replication lag alarm name should follow convention"
   }
 
   assert {
-    condition     = aws_cloudwatch_metric_alarm.s3_replication_lag.threshold == 900
+    condition     = aws_cloudwatch_metric_alarm.s3_replication_lag[0].threshold == 900
     error_message = "Replication lag threshold should be 900 seconds (15 min RTC target)"
   }
 
   assert {
-    condition     = aws_cloudwatch_metric_alarm.s3_replication_lag.comparison_operator == "GreaterThanThreshold"
+    condition     = aws_cloudwatch_metric_alarm.s3_replication_lag[0].comparison_operator == "GreaterThanThreshold"
     error_message = "Replication lag alarm should trigger when ABOVE threshold"
-  }
-
-  assert {
-    condition     = aws_cloudwatch_metric_alarm.s3_replication_lag.period == 900
-    error_message = "Replication lag alarm period should be 900 seconds"
-  }
-}
-
-run "no_alarm_actions_without_sns" {
-  command = plan
-
-  assert {
-    condition     = length(aws_cloudwatch_metric_alarm.s3_replication_lag.alarm_actions) == 0
-    error_message = "No alarm actions when SNS topic not provided"
-  }
-}
-
-run "alarm_actions_with_sns" {
-  command = plan
-
-  variables {
-    alarm_sns_topic_arn = "arn:aws:sns:us-east-1:123456789012:ml-alarms"
-  }
-
-  assert {
-    condition     = length(aws_cloudwatch_metric_alarm.s3_replication_lag.alarm_actions) == 1
-    error_message = "Should have exactly one alarm action when SNS topic provided"
   }
 }

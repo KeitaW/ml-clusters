@@ -168,6 +168,63 @@ resource "aws_iam_role_policy_attachment" "external_dns" {
   policy_arn = aws_iam_policy.external_dns[0].arn
 }
 
+# IRSA role for ADOT Collector (only when amp_workspace_arn is provided)
+data "aws_iam_policy_document" "adot_trust" {
+  count = var.amp_workspace_arn != "" ? 1 : 0
+
+  statement {
+    actions = ["sts:AssumeRoleWithWebIdentity"]
+    principals {
+      type        = "Federated"
+      identifiers = [module.eks.oidc_provider_arn]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "${replace(module.eks.oidc_provider, "https://", "")}:sub"
+      values   = ["system:serviceaccount:opentelemetry:adot-collector"]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "${replace(module.eks.oidc_provider, "https://", "")}:aud"
+      values   = ["sts.amazonaws.com"]
+    }
+  }
+}
+
+resource "aws_iam_role" "adot" {
+  count              = var.amp_workspace_arn != "" ? 1 : 0
+  name               = "ADOTCollectorRole"
+  assume_role_policy = data.aws_iam_policy_document.adot_trust[0].json
+  tags               = var.tags
+}
+
+resource "aws_iam_policy" "adot" {
+  count = var.amp_workspace_arn != "" ? 1 : 0
+  name  = "ADOTCollectorPolicy"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "aps:RemoteWrite",
+          "aps:GetSeries",
+          "aps:GetLabels",
+          "aps:GetMetricMetadata",
+        ]
+        Resource = var.amp_workspace_arn
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "adot" {
+  count      = var.amp_workspace_arn != "" ? 1 : 0
+  role       = aws_iam_role.adot[0].name
+  policy_arn = aws_iam_policy.adot[0].arn
+}
+
 # Karpenter IAM resources via the EKS module's Karpenter submodule
 module "karpenter" {
   source  = "terraform-aws-modules/eks/aws//modules/karpenter"

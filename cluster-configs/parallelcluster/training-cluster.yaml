@@ -29,6 +29,7 @@ Scheduling:
           - ${compute_subnet_id}
         PlacementGroup:
           Enabled: true
+%{ if capacity_reservation_id != "" }
     - Name: gpu-capacity-block
       CapacityType: CAPACITY_BLOCK
       ComputeResources:
@@ -48,6 +49,7 @@ Scheduling:
           - ${compute_subnet_id}
         PlacementGroup:
           Enabled: true
+%{ endif }
 SharedStorage:
   - Name: fsx-training
     StorageType: FsxLustre

@@ -8,3 +8,5 @@ resources:
   - efa-device-plugin.yaml
   - aws-lb-controller.yaml
   - external-dns.yaml
+  - adot-collector.yaml
+  - dcgm-exporter.yaml

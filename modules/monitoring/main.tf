@@ -9,27 +9,104 @@ resource "aws_prometheus_workspace" "main" {
 }
 
 ################################################################################
-# Amazon Managed Grafana (AMG) Workspace
+# SNS Topic for Alarm Notifications
+################################################################################
+
+resource "aws_sns_topic" "alerts" {
+  name = "ml-cluster-alerts-${var.account_name}-${var.aws_region}"
+
+  tags = var.tags
+}
+
+# Allow AMP Alertmanager to publish to this topic
+resource "aws_sns_topic_policy" "alerts" {
+  arn = aws_sns_topic.alerts.arn
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid       = "AllowAMPAlertmanagerPublish"
+        Effect    = "Allow"
+        Principal = { Service = "aps.amazonaws.com" }
+        Action    = "SNS:Publish"
+        Resource  = aws_sns_topic.alerts.arn
+        Condition = {
+          StringEquals = {
+            "aws:SourceAccount" = data.aws_caller_identity.current.account_id
+          }
+        }
+      }
+    ]
+  })
+}
+
+resource "aws_sns_topic_subscription" "email" {
+  count = var.notification_email != "" ? 1 : 0
+
+  topic_arn = aws_sns_topic.alerts.arn
+  protocol  = "email"
+  endpoint  = var.notification_email
+}
+
+################################################################################
+# Prometheus Alertmanager Definition
+################################################################################
+
+resource "aws_prometheus_alert_manager_definition" "main" {
+  workspace_id = aws_prometheus_workspace.main.id
+
+  definition = yamlencode({
+    alertmanager_config = <<-ALERTMANAGER
+      route:
+        receiver: sns
+        group_by: ['alertname', 'severity']
+        group_wait: 30s
+        group_interval: 5m
+        repeat_interval: 4h
+      receivers:
+        - name: sns
+          sns_configs:
+            - topic_arn: ${aws_sns_topic.alerts.arn}
+              sigv4:
+                region: ${var.aws_region}
+              message: |
+                {{ range .Alerts }}
+                Alert: {{ .Labels.alertname }}
+                Severity: {{ .Labels.severity }}
+                Summary: {{ .Annotations.summary }}
+                Description: {{ .Annotations.description }}
+                {{ end }}
+    ALERTMANAGER
+  })
+}
+
+################################################################################
+# Amazon Managed Grafana (AMG) Workspace — conditional on enable_grafana
 ################################################################################
 
 resource "aws_grafana_workspace" "main" {
+  count = var.enable_grafana ? 1 : 0
+
   name                     = "ml-grafana-${var.account_name}-${var.aws_region}"
   account_access_type      = "CURRENT_ACCOUNT"
-  authentication_providers = ["AWS_SSO"]
-  permission_type          = "SERVICE_MANAGED"
-  role_arn                 = aws_iam_role.grafana.arn
+  authentication_providers = var.grafana_auth_providers
+  permission_type          = "CUSTOMER_MANAGED"
+  role_arn                 = aws_iam_role.grafana[0].arn
   data_sources             = ["PROMETHEUS", "CLOUDWATCH"]
 
   tags = var.tags
 }
 
 ################################################################################
-# Grafana IAM Role
+# Grafana IAM Role — conditional on enable_grafana
 ################################################################################
 
 data "aws_caller_identity" "current" {}
 
 resource "aws_iam_role" "grafana" {
+  count = var.enable_grafana ? 1 : 0
+
   name = "ml-grafana-${var.account_name}-${var.aws_region}"
 
   assume_role_policy = jsonencode({
@@ -54,8 +131,10 @@ resource "aws_iam_role" "grafana" {
 }
 
 resource "aws_iam_role_policy" "grafana_amp_read" {
+  count = var.enable_grafana ? 1 : 0
+
   name = "amp-read-access"
-  role = aws_iam_role.grafana.id
+  role = aws_iam_role.grafana[0].id
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -77,8 +156,10 @@ resource "aws_iam_role_policy" "grafana_amp_read" {
 }
 
 resource "aws_iam_role_policy" "grafana_cloudwatch_read" {
+  count = var.enable_grafana ? 1 : 0
+
   name = "cloudwatch-read-access"
-  role = aws_iam_role.grafana.id
+  role = aws_iam_role.grafana[0].id
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -189,17 +270,19 @@ resource "aws_cloudwatch_metric_alarm" "subnet_ip_exhaustion" {
     SubnetId = each.value
   }
 
-  alarm_actions = var.alarm_sns_topic_arn != "" ? [var.alarm_sns_topic_arn] : []
-  ok_actions    = var.alarm_sns_topic_arn != "" ? [var.alarm_sns_topic_arn] : []
+  alarm_actions = [aws_sns_topic.alerts.arn]
+  ok_actions    = [aws_sns_topic.alerts.arn]
 
   tags = var.tags
 }
 
 ################################################################################
-# CloudWatch Alarms - S3 Replication Lag
+# CloudWatch Alarms - S3 Replication Lag (only when replication is configured)
 ################################################################################
 
 resource "aws_cloudwatch_metric_alarm" "s3_replication_lag" {
+  count = var.s3_replication_bucket_name != "" ? 1 : 0
+
   alarm_name          = "s3-replication-lag-${var.account_name}-${var.aws_region}"
   alarm_description   = "S3 replication latency exceeds 15 minutes"
   comparison_operator = "GreaterThanThreshold"
@@ -211,8 +294,14 @@ resource "aws_cloudwatch_metric_alarm" "s3_replication_lag" {
   threshold           = 900
   treat_missing_data  = "notBreaching"
 
-  alarm_actions = var.alarm_sns_topic_arn != "" ? [var.alarm_sns_topic_arn] : []
-  ok_actions    = var.alarm_sns_topic_arn != "" ? [var.alarm_sns_topic_arn] : []
+  dimensions = {
+    SourceBucket     = var.s3_replication_bucket_name
+    DestinationBucket = var.s3_replication_dest_bucket_name
+    RuleId           = var.s3_replication_rule_id
+  }
+
+  alarm_actions = [aws_sns_topic.alerts.arn]
+  ok_actions    = [aws_sns_topic.alerts.arn]
 
   tags = var.tags
 }

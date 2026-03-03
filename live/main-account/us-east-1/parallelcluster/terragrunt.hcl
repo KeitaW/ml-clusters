@@ -24,8 +24,9 @@ generate "parallelcluster_provider" {
   if_exists = "overwrite_terragrunt"
   contents  = <<-EOF
     provider "aws-parallelcluster" {
-      region   = "us-east-1"
-      endpoint = "https://pcluster-api.us-east-1.amazonaws.com"
+      region         = "us-east-1"
+      api_stack_name = "pcluster-api-us-east-1"
+      use_user_role  = true
     }
 
     terraform {
