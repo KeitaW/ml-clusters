@@ -3,15 +3,15 @@ kind: EC2NodeClass
 metadata:
   name: gpu-training
 spec:
-  role: Karpenter-ml-cluster-main-us-east-1-2026030310540263780000000b
+  instanceProfile: {{ .Values.instanceProfileName }}
   amiSelectorTerms:
     - alias: al2023@latest
   subnetSelectorTerms:
     - tags:
-        karpenter.sh/discovery: ml-cluster-main-us-east-1
+        karpenter.sh/discovery: {{ .Values.clusterName }}
   securityGroupSelectorTerms:
     - tags:
-        karpenter.sh/discovery: ml-cluster-main-us-east-1
+        karpenter.sh/discovery: {{ .Values.clusterName }}
   blockDeviceMappings:
     - deviceName: /dev/xvda
       ebs:

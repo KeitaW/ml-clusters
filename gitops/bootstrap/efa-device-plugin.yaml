@@ -1,0 +1,33 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: efa-device-plugin
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions:
+    - missingkey=error
+  generators:
+    - clusters:
+        selector:
+          matchLabels:
+            argocd.argoproj.io/secret-type: cluster
+  template:
+    metadata:
+      name: 'efa-device-plugin-{{.name}}'
+    spec:
+      project: default
+      source:
+        repoURL: https://github.com/KeitaW/ml-clusters.git
+        targetRevision: main
+        path: gitops/charts/efa-device-plugin
+        helm:
+          valuesObject:
+            awsRegion: '{{index .metadata.annotations "aws_region"}}'
+      destination:
+        server: '{{.server}}'
+        namespace: kube-system
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true

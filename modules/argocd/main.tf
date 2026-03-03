@@ -1,6 +1,7 @@
 # Configure providers using cluster details
 locals {
-  eks_token_args = var.assume_role_arn != "" ? ["eks", "get-token", "--cluster-name", var.cluster_name, "--role-arn", var.assume_role_arn] : ["eks", "get-token", "--cluster-name", var.cluster_name]
+  eks_token_args         = var.assume_role_arn != "" ? ["eks", "get-token", "--cluster-name", var.cluster_name, "--role-arn", var.assume_role_arn] : ["eks", "get-token", "--cluster-name", var.cluster_name]
+  spoke_access_role_arns = compact([for k, v in var.spoke_clusters : v.role_arn if v.role_arn != null])
 }
 
 provider "helm" {
@@ -27,14 +28,79 @@ provider "kubernetes" {
   }
 }
 
-# ArgoCD namespace
+###############################################################################
+# IRSA role for ArgoCD application-controller and server
+###############################################################################
+
+data "aws_iam_policy_document" "argocd_controller_trust" {
+  statement {
+    actions = ["sts:AssumeRoleWithWebIdentity"]
+
+    principals {
+      type        = "Federated"
+      identifiers = [var.oidc_provider_arn]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "${replace(var.oidc_provider, "https://", "")}:sub"
+      values = [
+        "system:serviceaccount:${var.argocd_namespace}:argocd-application-controller",
+        "system:serviceaccount:${var.argocd_namespace}:argocd-server",
+      ]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "${replace(var.oidc_provider, "https://", "")}:aud"
+      values   = ["sts.amazonaws.com"]
+    }
+  }
+}
+
+data "aws_iam_policy_document" "argocd_controller_permissions" {
+  statement {
+    sid       = "EKSDescribeCluster"
+    actions   = ["eks:DescribeCluster"]
+    resources = ["*"]
+  }
+
+  dynamic "statement" {
+    for_each = length(local.spoke_access_role_arns) > 0 ? [1] : []
+    content {
+      sid       = "AssumeSpokeRoles"
+      actions   = ["sts:AssumeRole"]
+      resources = local.spoke_access_role_arns
+    }
+  }
+}
+
+resource "aws_iam_role" "argocd_controller" {
+  name               = "ArgoCD-Hub-Controller"
+  assume_role_policy = data.aws_iam_policy_document.argocd_controller_trust.json
+  tags               = var.tags
+}
+
+resource "aws_iam_policy" "argocd_controller" {
+  name   = "ArgoCD-Hub-Controller-Policy"
+  policy = data.aws_iam_policy_document.argocd_controller_permissions.json
+}
+
+resource "aws_iam_role_policy_attachment" "argocd_controller" {
+  role       = aws_iam_role.argocd_controller.name
+  policy_arn = aws_iam_policy.argocd_controller.arn
+}
+
+###############################################################################
+# ArgoCD namespace and Helm release
+###############################################################################
+
 resource "kubernetes_namespace_v1" "argocd" {
   metadata {
     name = var.argocd_namespace
   }
 }
 
-# ArgoCD Helm release
 resource "helm_release" "argocd" {
   name       = "argocd"
   repository = "https://argoproj.github.io/argo-helm"
@@ -43,7 +109,19 @@ resource "helm_release" "argocd" {
   namespace  = kubernetes_namespace_v1.argocd.metadata[0].name
 
   values = [yamlencode({
+    controller = {
+      serviceAccount = {
+        annotations = {
+          "eks.amazonaws.com/role-arn" = aws_iam_role.argocd_controller.arn
+        }
+      }
+    }
     server = {
+      serviceAccount = {
+        annotations = {
+          "eks.amazonaws.com/role-arn" = aws_iam_role.argocd_controller.arn
+        }
+      }
       service = {
         type = "ClusterIP"
       }
@@ -58,7 +136,7 @@ resource "helm_release" "argocd" {
           "alb.ingress.kubernetes.io/group.name"                      = var.alb_ingress_group_name
           "alb.ingress.kubernetes.io/healthcheck-path"                = "/healthz"
           "alb.ingress.kubernetes.io/auth-type"                       = "cognito"
-          "alb.ingress.kubernetes.io/auth-idp-cognito"                = jsonencode({
+          "alb.ingress.kubernetes.io/auth-idp-cognito" = jsonencode({
             UserPoolArn      = var.cognito_user_pool_arn
             UserPoolClientId = var.cognito_app_client_id
             UserPoolDomain   = var.cognito_user_pool_domain
@@ -79,18 +157,27 @@ resource "helm_release" "argocd" {
   })]
 }
 
-# Hub cluster self-registration as a secret with GitOps Bridge annotations
+###############################################################################
+# Hub cluster self-registration with GitOps Bridge annotations
+###############################################################################
+
 resource "kubernetes_secret_v1" "hub_cluster" {
   metadata {
     name      = "hub-cluster"
     namespace = var.argocd_namespace
-    labels = {
-      "argocd.argoproj.io/secret-type" = "cluster"
-    }
-    annotations = {
-      "cluster_name" = var.cluster_name
-      "environment"  = "hub"
-    }
+    labels = merge(
+      {
+        "argocd.argoproj.io/secret-type" = "cluster"
+      },
+      { for k, v in var.hub_annotations : k => v if contains(["enable_karpenter", "enable_external_dns", "enable_adot"], k) }
+    )
+    annotations = merge(
+      {
+        "cluster_name" = var.cluster_name
+        "environment"  = "hub"
+      },
+      var.hub_annotations
+    )
   }
 
   data = {
@@ -101,85 +188,86 @@ resource "kubernetes_secret_v1" "hub_cluster" {
   depends_on = [helm_release.argocd]
 }
 
-# Spoke cluster registration
+###############################################################################
+# Spoke cluster registration with awsAuthConfig
+###############################################################################
+
 resource "kubernetes_secret_v1" "spoke_clusters" {
   for_each = var.spoke_clusters
 
   metadata {
     name      = each.key
     namespace = var.argocd_namespace
-    labels = {
-      "argocd.argoproj.io/secret-type" = "cluster"
-    }
-    annotations = {
-      "cluster_name" = each.value.name
-      "environment"  = "spoke"
-    }
+    labels = merge(
+      {
+        "argocd.argoproj.io/secret-type" = "cluster"
+      },
+      { for k, v in each.value.annotations : k => v if contains(["enable_karpenter", "enable_external_dns", "enable_adot"], k) }
+    )
+    annotations = merge(
+      {
+        "cluster_name" = each.value.cluster_name
+        "environment"  = "spoke"
+      },
+      each.value.annotations
+    )
   }
 
   data = {
     name   = each.value.name
     server = each.value.server
-    config = jsonencode({
-      tlsClientConfig = {
-        caData = each.value.ca_data
+    config = jsonencode(merge(
+      {
+        awsAuthConfig = merge(
+          { clusterName = each.value.cluster_name },
+          each.value.role_arn != null ? { roleARN = each.value.role_arn } : {}
+        )
+      },
+      {
+        tlsClientConfig = {
+          caData = each.value.ca_data
+        }
       }
-    })
+    ))
   }
 
   depends_on = [helm_release.argocd]
 }
 
-# ApplicationSet to bootstrap GitOps add-ons via app-of-apps pattern
-resource "kubernetes_manifest" "cluster_addons_appset" {
+###############################################################################
+# Bootstrap Application — deploys per-addon ApplicationSets to hub
+###############################################################################
+
+resource "kubernetes_manifest" "bootstrap_app" {
   count = var.enable_applicationset_bootstrap ? 1 : 0
 
   manifest = {
     apiVersion = "argoproj.io/v1alpha1"
-    kind       = "ApplicationSet"
+    kind       = "Application"
     metadata = {
-      name      = "cluster-addons"
+      name      = "bootstrap"
       namespace = var.argocd_namespace
     }
     spec = {
-      goTemplate        = true
-      goTemplateOptions = ["missingkey=error"]
-      generators = [{
-        clusters = {
-          selector = {
-            matchLabels = {
-              "argocd.argoproj.io/secret-type" = "cluster"
-            }
-          }
+      project = "default"
+      source = {
+        repoURL        = var.git_repo_url
+        targetRevision = "main"
+        path           = "gitops/bootstrap"
+      }
+      destination = {
+        server    = "https://kubernetes.default.svc"
+        namespace = var.argocd_namespace
+      }
+      syncPolicy = {
+        automated = {
+          prune    = true
+          selfHeal = true
         }
-      }]
-      template = {
-        metadata = {
-          name = "addons-{{.name}}"
-        }
-        spec = {
-          project = "default"
-          source = {
-            repoURL        = var.git_repo_url
-            targetRevision  = "main"
-            path           = "gitops/add-ons"
-          }
-          destination = {
-            server    = "{{.server}}"
-            namespace = "kube-system"
-          }
-          syncPolicy = {
-            automated = {
-              prune    = true
-              selfHeal = true
-            }
-            syncOptions = [
-              "CreateNamespace=true",
-              "ServerSideApply=true",
-              "SkipDryRunOnMissingResource=true"
-            ]
-          }
-        }
+        syncOptions = [
+          "CreateNamespace=true",
+          "ServerSideApply=true",
+        ]
       }
     }
   }

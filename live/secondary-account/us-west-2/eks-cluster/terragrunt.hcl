@@ -16,4 +16,7 @@ inputs = {
   vpc_id                = dependency.networking.outputs.vpc_id
   private_subnet_ids    = dependency.networking.outputs.private_subnet_ids
   efa_security_group_id = dependency.networking.outputs.efa_security_group_id
+
+  # ArgoCD access — cross-account via ArgoCD-Spoke-Access role in this account
+  argocd_access_role_arns = ["arn:aws:iam::159553542841:role/ArgoCD-Spoke-Access"]
 }

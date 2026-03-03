@@ -243,6 +243,29 @@ resource "aws_iam_role_policy_attachment" "adot" {
   policy_arn = aws_iam_policy.adot[0].arn
 }
 
+# ArgoCD hub access entries
+resource "aws_eks_access_entry" "argocd" {
+  for_each = toset(var.argocd_access_role_arns)
+
+  cluster_name  = module.eks.cluster_name
+  principal_arn = each.value
+  type          = "STANDARD"
+}
+
+resource "aws_eks_access_policy_association" "argocd" {
+  for_each = toset(var.argocd_access_role_arns)
+
+  cluster_name  = module.eks.cluster_name
+  principal_arn = each.value
+  policy_arn    = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
+
+  access_scope {
+    type = "cluster"
+  }
+
+  depends_on = [aws_eks_access_entry.argocd]
+}
+
 # Karpenter IAM resources via the EKS module's Karpenter submodule
 module "karpenter" {
   source  = "terraform-aws-modules/eks/aws//modules/karpenter"

@@ -373,6 +373,58 @@ resource "aws_iam_role_policy" "hyperpod_execution" {
 }
 
 ###############################################################################
+# ArgoCD Spoke Access Role (for cross-account hub → spoke EKS access)
+###############################################################################
+
+data "aws_iam_policy_document" "argocd_spoke_assume_role" {
+  count = var.create_argocd_spoke_role ? 1 : 0
+
+  statement {
+    effect = "Allow"
+
+    principals {
+      type        = "AWS"
+      identifiers = [var.argocd_hub_role_arn]
+    }
+
+    actions = ["sts:AssumeRole"]
+  }
+}
+
+data "aws_iam_policy_document" "argocd_spoke_permissions" {
+  count = var.create_argocd_spoke_role ? 1 : 0
+
+  statement {
+    sid    = "EKSDescribeCluster"
+    effect = "Allow"
+
+    actions = [
+      "eks:DescribeCluster",
+      "eks:ListClusters",
+    ]
+
+    resources = ["*"]
+  }
+}
+
+resource "aws_iam_role" "argocd_spoke_access" {
+  count = var.create_argocd_spoke_role ? 1 : 0
+
+  name               = "ArgoCD-Spoke-Access"
+  assume_role_policy = data.aws_iam_policy_document.argocd_spoke_assume_role[0].json
+
+  tags = var.tags
+}
+
+resource "aws_iam_role_policy" "argocd_spoke_access" {
+  count = var.create_argocd_spoke_role ? 1 : 0
+
+  name   = "ArgoCD-Spoke-Access-Policy"
+  role   = aws_iam_role.argocd_spoke_access[0].id
+  policy = data.aws_iam_policy_document.argocd_spoke_permissions[0].json
+}
+
+###############################################################################
 # S3 Replication Role
 ###############################################################################
 

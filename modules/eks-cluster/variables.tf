@@ -48,6 +48,12 @@ variable "amp_workspace_arn" {
   default     = ""
 }
 
+variable "argocd_access_role_arns" {
+  description = "IAM role ARNs to grant cluster-admin access for ArgoCD hub"
+  type        = list(string)
+  default     = []
+}
+
 variable "tags" {
   description = "Tags to apply to all resources"
   type        = map(string)

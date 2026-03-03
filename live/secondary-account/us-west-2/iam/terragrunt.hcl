@@ -13,4 +13,8 @@ inputs = {
   create_parallelcluster_roles   = false
   create_hyperpod_role           = true
   create_s3_replication_role     = false
+
+  # ArgoCD cross-account access
+  create_argocd_spoke_role = true
+  argocd_hub_role_arn      = "arn:aws:iam::483026362307:role/ArgoCD-Hub-Controller"
 }
