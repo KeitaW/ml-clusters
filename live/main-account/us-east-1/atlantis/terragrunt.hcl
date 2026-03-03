@@ -25,7 +25,7 @@ inputs = {
   assume_role_arn        = "arn:aws:iam::483026362307:role/TerraformExecutionRole"
   kms_key_arn            = dependency.iam.outputs.kms_key_arn
   github_user            = "KeitaW"
-  # github_token: set via TF_VAR_github_token environment variable at apply time
+  github_token           = get_env("GITHUB_PERSONAL_ACCESS_TOKEN", "")
 
   # Midway authentication
   enable_cognito_auth      = true
