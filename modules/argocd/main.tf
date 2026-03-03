@@ -175,7 +175,8 @@ resource "kubernetes_manifest" "cluster_addons_appset" {
             }
             syncOptions = [
               "CreateNamespace=true",
-              "ServerSideApply=true"
+              "ServerSideApply=true",
+              "SkipDryRunOnMissingResource=true"
             ]
           }
         }
