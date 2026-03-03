@@ -48,7 +48,7 @@ List active Capacity Block reservations.
 1. Query the main account:
    ```
    aws ec2 describe-capacity-reservations \
-     --filters Name=capacity-reservation-type,Values=capacity-block \
+     --filters Name=reservation-type,Values=capacity-block \
      --region us-east-1
    ```
 2. Format as table: Reservation ID, Instance Type, Count, State, AZ, Start, End

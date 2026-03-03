@@ -28,15 +28,6 @@ generate "parallelcluster_provider" {
       api_stack_name = "pcluster-api-us-east-1"
       use_user_role  = true
     }
-
-    terraform {
-      required_providers {
-        aws-parallelcluster = {
-          source  = "aws-tf/aws-parallelcluster"
-          version = "~> 1.1"
-        }
-      }
-    }
   EOF
 }
 
