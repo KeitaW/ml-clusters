@@ -37,6 +37,8 @@ spec:
               verbs: ["get"]
         config:
           extensions:
+            health_check:
+              endpoint: 0.0.0.0:13133
             sigv4auth:
               region: us-east-1
               service: aps
@@ -91,7 +93,7 @@ spec:
               auth:
                 authenticator: sigv4auth
           service:
-            extensions: [sigv4auth]
+            extensions: [health_check, sigv4auth]
             pipelines:
               metrics:
                 receivers: [prometheus]
