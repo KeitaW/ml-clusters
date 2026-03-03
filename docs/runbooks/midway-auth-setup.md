@@ -4,7 +4,7 @@ Deployment runbook for securing EKS-hosted services (ArgoCD, Atlantis) with Midw
 
 **Account**: 483026362307 (`mlkeita@amazon.co.jp`)
 **Region**: us-east-1
-**EKS Cluster**: ml-training-main-us-east-1
+**EKS Cluster**: ml-cluster-main-us-east-1
 **Domain**: mlkeita.people.aws.dev
 
 ## Architecture Overview
@@ -213,7 +213,7 @@ The external-dns controller running on EKS needs IAM permissions to manage Route
 
 ```bash
 OIDC_PROVIDER=$(aws eks describe-cluster \
-  --name ml-training-main-us-east-1 \
+  --name ml-cluster-main-us-east-1 \
   --query "cluster.identity.oidc.issuer" \
   --output text | sed 's|https://||')
 
@@ -342,7 +342,7 @@ aws iam create-policy \
 ```bash
 ACCOUNT_ID=483026362307
 OIDC_PROVIDER=$(aws eks describe-cluster \
-  --name ml-training-main-us-east-1 \
+  --name ml-cluster-main-us-east-1 \
   --query "cluster.identity.oidc.issuer" \
   --output text | sed 's|https://||')
 

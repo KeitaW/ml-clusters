@@ -20,7 +20,7 @@ spec:
           create: true
           name: adot-collector
           annotations:
-            eks.amazonaws.com/role-arn: arn:aws:iam::483026362307:role/ADOTCollector-ml-training-main-us-east-1
+            eks.amazonaws.com/role-arn: arn:aws:iam::483026362307:role/ADOTCollector-ml-cluster-main-us-east-1
         clusterRole:
           create: true
           rules:

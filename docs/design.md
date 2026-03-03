@@ -179,7 +179,7 @@ ml-clusters/
         s3-tfstate/terragrunt.hcl
         s3-replication/terragrunt.hcl
         shared-storage/terragrunt.hcl
-        eks-training/terragrunt.hcl
+        eks-cluster/terragrunt.hcl
         argocd/terragrunt.hcl                    # Hub-only: ArgoCD install + spoke registration
         parallelcluster/terragrunt.hcl
         monitoring/terragrunt.hcl
@@ -188,7 +188,7 @@ ml-clusters/
         networking/terragrunt.hcl
         s3-data-replica/terragrunt.hcl
         shared-storage/terragrunt.hcl
-        eks-inference/terragrunt.hcl
+        eks-cluster/terragrunt.hcl
     secondary-account/                        # 159553542841
       account.hcl
       us-west-2/
@@ -197,7 +197,7 @@ ml-clusters/
         iam/terragrunt.hcl
         s3-data-replica/terragrunt.hcl
         shared-storage/terragrunt.hcl
-        eks-training/terragrunt.hcl
+        eks-cluster/terragrunt.hcl
         hyperpod-slurm/terragrunt.hcl
   cluster-configs/
     parallelcluster/                          # ParallelCluster YAML configs
@@ -556,7 +556,7 @@ In Terragrunt, this is modeled as two separate components with a `dependency` bl
 ```hcl
 # live/secondary-account/us-west-2/hyperpod-eks/terragrunt.hcl
 dependency "eks" {
-  config_path = "../eks-training"
+  config_path = "../eks-cluster"
 }
 
 inputs = {
@@ -600,8 +600,8 @@ projects:
     depends_on: [main-use1-networking]
     execution_order_group: 2
 
-  - name: main-use1-eks-training
-    dir: live/main-account/us-east-1/eks-training
+  - name: main-use1-eks-cluster
+    dir: live/main-account/us-east-1/eks-cluster
     autoplan:
       when_modified: ["*.hcl", "../../../../modules/eks-cluster/**"]
       enabled: true
