@@ -24,7 +24,7 @@ dependency "monitoring" {
 }
 
 inputs = {
-  cluster_name          = "ml-training-main-us-east-1"
+  cluster_name          = "ml-cluster-main-us-east-1"
   vpc_id                = dependency.networking.outputs.vpc_id
   private_subnet_ids    = dependency.networking.outputs.private_subnet_ids
   efa_security_group_id = dependency.networking.outputs.efa_security_group_id

@@ -73,18 +73,18 @@ projects:
     execution_order_group: 2
 
   # --- Execution Order Group 3: EKS Clusters ---
-  - name: main-us-east-1-eks-training
-    dir: live/main-account/us-east-1/eks-training
+  - name: main-us-east-1-eks-cluster
+    dir: live/main-account/us-east-1/eks-cluster
     workflow: terragrunt
     execution_order_group: 3
 
-  - name: main-us-west-2-eks-inference
-    dir: live/main-account/us-west-2/eks-inference
+  - name: main-us-west-2-eks-cluster
+    dir: live/main-account/us-west-2/eks-cluster
     workflow: terragrunt
     execution_order_group: 3
 
-  - name: secondary-us-west-2-eks-training
-    dir: live/secondary-account/us-west-2/eks-training
+  - name: secondary-us-west-2-eks-cluster
+    dir: live/secondary-account/us-west-2/eks-cluster
     workflow: terragrunt
     execution_order_group: 3
 

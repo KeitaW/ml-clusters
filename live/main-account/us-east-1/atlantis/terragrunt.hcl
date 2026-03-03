@@ -7,7 +7,7 @@ terraform {
 }
 
 dependency "eks" {
-  config_path = "../eks-training"
+  config_path = "../eks-cluster"
 }
 
 dependency "iam" {
