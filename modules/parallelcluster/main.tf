@@ -12,12 +12,12 @@ module "pcluster" {
   deploy_pcluster_api = var.deploy_pcluster_api
 
   cluster_configs = { for name, config in var.cluster_configs : name => {
-    configuration = templatefile(config.config_path, {
+    configuration = yamldecode(templatefile(config.config_path, {
       head_node_subnet_id     = config.head_node_subnet_id
       compute_subnet_id       = config.compute_subnet_id
       fsx_filesystem_id       = config.fsx_filesystem_id
       efs_filesystem_id       = config.efs_filesystem_id
       capacity_reservation_id = config.capacity_reservation_id
-    })
+    }))
   } }
 }
