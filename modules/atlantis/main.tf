@@ -80,7 +80,7 @@ data "aws_iam_policy_document" "atlantis_terraform" {
   statement {
     sid       = "AssumeTerraformExecutionRole"
     effect    = "Allow"
-    actions   = ["sts:AssumeRole"]
+    actions   = ["sts:AssumeRole", "sts:TagSession"]
     resources = [var.terraform_execution_role_arn]
   }
 
