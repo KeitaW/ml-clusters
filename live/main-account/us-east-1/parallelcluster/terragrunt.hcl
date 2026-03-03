@@ -38,7 +38,8 @@ inputs = {
   cluster_configs = {
     training = {
       config_path        = "${dirname(find_in_parent_folders("terragrunt.hcl"))}/../cluster-configs/parallelcluster/training-cluster.yaml"
-      head_node_subnet_id    = dependency.networking.outputs.public_subnet_ids[0]
+      # Head node on private subnet — uses NAT gateway for internet access
+      head_node_subnet_id    = dependency.networking.outputs.private_subnet_ids[0]
       compute_subnet_id      = dependency.networking.outputs.private_subnet_ids[0]
       fsx_filesystem_id      = dependency.shared_storage.outputs.fsx_filesystem_id
       efs_filesystem_id      = dependency.shared_storage.outputs.efs_filesystem_id
