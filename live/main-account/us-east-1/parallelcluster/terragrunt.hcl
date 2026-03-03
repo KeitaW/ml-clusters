@@ -33,7 +33,8 @@ generate "parallelcluster_provider" {
 
 inputs = {
   region              = "us-east-1"
-  deploy_pcluster_api = true
+  # API stack deployed via CloudFormation outside of Terraform (chicken-and-egg with provider)
+  deploy_pcluster_api = false
   cluster_configs = {
     training = {
       config_path        = "${dirname(find_in_parent_folders("terragrunt.hcl"))}/../cluster-configs/parallelcluster/training-cluster.yaml"
