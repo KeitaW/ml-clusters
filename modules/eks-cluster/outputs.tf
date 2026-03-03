@@ -62,3 +62,8 @@ output "external_dns_role_arn" {
   description = "IAM role ARN for External-DNS"
   value       = var.route53_zone_id != "" ? aws_iam_role.external_dns[0].arn : ""
 }
+
+output "adot_role_arn" {
+  description = "IAM role ARN for the ADOT Collector"
+  value       = var.amp_workspace_arn != "" ? aws_iam_role.adot[0].arn : ""
+}

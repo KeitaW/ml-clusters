@@ -10,14 +10,18 @@ dependency "networking" {
   config_path = "../networking"
 }
 
-dependency "eks" {
-  config_path = "../eks-training"
-}
-
 inputs = {
-  account_name = "main"
-  aws_region   = "us-east-1"
-  vpc_id       = dependency.networking.outputs.vpc_id
+  account_name       = "main"
+  aws_region         = "us-east-1"
+  vpc_id             = dependency.networking.outputs.vpc_id
   private_subnet_ids = dependency.networking.outputs.private_subnet_ids
-  eks_cluster_name   = dependency.eks.outputs.cluster_name
+
+  # Grafana disabled — IAM Identity Center is not enabled in this account.
+  # Set to true and configure grafana_auth_providers after enabling SSO or SAML.
+  enable_grafana = false
+
+  # S3 replication not yet configured — alarm deferred
+  # s3_replication_bucket_name      = "ml-data-central-483026362307-us-east-1"
+  # s3_replication_dest_bucket_name = "ml-data-replica-..."
+  # s3_replication_rule_id          = "..."
 }

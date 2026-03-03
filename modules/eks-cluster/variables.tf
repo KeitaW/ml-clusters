@@ -42,6 +42,12 @@ variable "route53_zone_id" {
   default     = ""
 }
 
+variable "amp_workspace_arn" {
+  description = "ARN of the AMP workspace for ADOT IRSA. Leave empty to skip ADOT IRSA creation."
+  type        = string
+  default     = ""
+}
+
 variable "tags" {
   description = "Tags to apply to all resources"
   type        = map(string)
