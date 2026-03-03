@@ -13,17 +13,25 @@ module "eks" {
   # Allow public access for initial setup, restrict in production
   endpoint_public_access = true
 
-  # EKS managed add-ons (day-0 critical)
+  # EKS managed add-ons — before_compute ensures addons install before node groups
   addons = {
-    coredns                = {}
-    kube-proxy             = {}
-    eks-pod-identity-agent = {}
+    coredns = {
+      before_compute = true
+    }
+    kube-proxy = {
+      before_compute = true
+    }
+    eks-pod-identity-agent = {
+      before_compute = true
+    }
     vpc-cni = {
+      before_compute       = true
       configuration_values = jsonencode({
         enableNetworkPolicy = "true"
       })
     }
     aws-ebs-csi-driver = {
+      before_compute          = true
       service_account_role_arn = aws_iam_role.ebs_csi.arn
     }
   }
