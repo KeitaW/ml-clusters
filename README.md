@@ -26,7 +26,7 @@ Unified, multi-account, multi-region infrastructure management for AWS ML worklo
          │  └─────────────────────────────────────────────┘  │
          │  ┌─────────────────────────────────────────────┐  │
          │  │ Main Account (us-west-2)                    │  │
-         │  │  VPC ─ EKS Inference ─ S3 Replica ─ Storage │  │
+         │  │  VPC ─ EKS ─ S3 Replica ─ Storage             │  │
          │  └─────────────────────────────────────────────┘  │
          │  ┌─────────────────────────────────────────────┐  │
          │  │ Secondary Account (us-west-2)               │  │
