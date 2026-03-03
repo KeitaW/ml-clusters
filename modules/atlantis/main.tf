@@ -93,6 +93,24 @@ data "aws_iam_policy_document" "atlantis_terraform" {
     actions   = ["sts:AssumeRole"]
     resources = [var.terraform_execution_role_arn]
   }
+
+  # S3 backend access — the backend config does not use assume_role,
+  # so the Pod Identity role needs direct access to the state bucket.
+  statement {
+    sid    = "TfStateS3Access"
+    effect = "Allow"
+    actions = [
+      "s3:GetObject",
+      "s3:PutObject",
+      "s3:DeleteObject",
+      "s3:ListBucket",
+      "s3:GetBucketLocation",
+    ]
+    resources = [
+      "arn:aws:s3:::${var.tfstate_bucket_name}",
+      "arn:aws:s3:::${var.tfstate_bucket_name}/*",
+    ]
+  }
 }
 
 resource "aws_iam_role_policy" "atlantis_terraform" {

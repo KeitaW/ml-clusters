@@ -125,3 +125,8 @@ variable "terraform_execution_role_arn" {
   description = "ARN of the TerraformExecutionRole that Atlantis assumes for plan/apply"
   type        = string
 }
+
+variable "tfstate_bucket_name" {
+  description = "Name of the S3 bucket storing Terraform state (for backend access)"
+  type        = string
+}
