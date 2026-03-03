@@ -18,7 +18,7 @@ spec:
           create: true
           name: aws-load-balancer-controller
           annotations:
-            eks.amazonaws.com/role-arn: arn:aws:iam::483026362307:role/AWSLoadBalancerControllerRole
+            eks.amazonaws.com/role-arn: arn:aws:iam::483026362307:role/ALBController-ml-training-main-us-east-1
   destination:
     server: https://kubernetes.default.svc
     namespace: kube-system
