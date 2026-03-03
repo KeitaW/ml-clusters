@@ -125,12 +125,12 @@ workflows:
     plan:
       steps:
         - env:
-            name: TERRAGRUNT_TFPATH
+            name: TG_TF_PATH
             value: terraform
-        - run: /extra-bin/terragrunt plan -no-color -out=$PLANFILE
+        - run: /extra-bin/terragrunt plan -no-color --terragrunt-fetch-dependency-output-from-state -out=$PLANFILE
     apply:
       steps:
         - env:
-            name: TERRAGRUNT_TFPATH
+            name: TG_TF_PATH
             value: terraform
         - run: /extra-bin/terragrunt apply -no-color $PLANFILE
