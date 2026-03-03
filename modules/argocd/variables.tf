@@ -13,6 +13,16 @@ variable "cluster_ca_certificate" {
   type        = string
 }
 
+variable "oidc_provider_arn" {
+  description = "ARN of the hub cluster's OIDC provider for IRSA"
+  type        = string
+}
+
+variable "oidc_provider" {
+  description = "OIDC provider URL of the hub cluster (e.g. https://oidc.eks.us-east-1.amazonaws.com/id/XXXX)"
+  type        = string
+}
+
 variable "argocd_chart_version" {
   description = "Version of the ArgoCD Helm chart"
   type        = string
@@ -25,12 +35,21 @@ variable "argocd_namespace" {
   default     = "argocd"
 }
 
+variable "hub_annotations" {
+  description = "GitOps Bridge annotations for the hub cluster secret (aws_region, vpc_id, IRSA role ARNs, feature flags)"
+  type        = map(string)
+  default     = {}
+}
+
 variable "spoke_clusters" {
   description = "Spoke clusters to register with ArgoCD"
   type = map(object({
-    name    = string
-    server  = string
-    ca_data = string
+    name         = string
+    server       = string
+    ca_data      = string
+    cluster_name = string
+    role_arn     = optional(string)
+    annotations  = optional(map(string), {})
   }))
   default = {}
 }
@@ -90,7 +109,7 @@ variable "cognito_user_pool_domain" {
 }
 
 variable "enable_applicationset_bootstrap" {
-  description = "Apply the cluster-addons ApplicationSet to bootstrap GitOps add-ons"
+  description = "Apply the bootstrap Application to deploy per-addon ApplicationSets"
   type        = bool
   default     = false
 }

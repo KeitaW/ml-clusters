@@ -1,0 +1,46 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: external-dns
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions:
+    - missingkey=error
+  generators:
+    - clusters:
+        selector:
+          matchLabels:
+            enable_external_dns: "true"
+  template:
+    metadata:
+      name: 'external-dns-{{.name}}'
+    spec:
+      project: default
+      source:
+        repoURL: https://kubernetes-sigs.github.io/external-dns
+        chart: external-dns
+        targetRevision: 1.15.0
+        helm:
+          valuesObject:
+            provider:
+              name: aws
+            domainFilters:
+              - mlkeita.people.aws.dev
+            policy: sync
+            registry: txt
+            txtOwnerId: ml-cluster-services
+            serviceAccount:
+              create: true
+              name: external-dns
+              annotations:
+                eks.amazonaws.com/role-arn: '{{index .metadata.annotations "external_dns_role_arn"}}'
+            sources:
+              - ingress
+      destination:
+        server: '{{.server}}'
+        namespace: kube-system
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true

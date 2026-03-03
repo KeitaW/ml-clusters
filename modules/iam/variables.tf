@@ -56,6 +56,18 @@ variable "kms_key_arns" {
   default     = []
 }
 
+variable "create_argocd_spoke_role" {
+  description = "Whether to create the ArgoCD-Spoke-Access IAM role for cross-account hub access"
+  type        = bool
+  default     = false
+}
+
+variable "argocd_hub_role_arn" {
+  description = "ARN of the ArgoCD hub controller IRSA role that can assume the spoke access role"
+  type        = string
+  default     = ""
+}
+
 variable "tags" {
   description = "Tags to apply to all resources"
   type        = map(string)

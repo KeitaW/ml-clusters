@@ -6,7 +6,7 @@ terraform {
   source = "${dirname(find_in_parent_folders("terragrunt.hcl"))}/../modules/argocd"
 }
 
-dependency "eks" {
+dependency "eks_hub" {
   config_path = "../eks-training"
 }
 
@@ -14,20 +14,128 @@ dependency "midway_auth" {
   config_path = "../midway-auth"
 }
 
+dependency "monitoring" {
+  config_path = "../monitoring"
+}
+
+dependency "eks_inference" {
+  config_path = "../../us-west-2/eks-inference"
+
+  mock_outputs = {
+    cluster_name                       = "ml-inference-main-us-west-2"
+    cluster_endpoint                   = "https://mock-endpoint.eks.us-west-2.amazonaws.com"
+    cluster_certificate_authority_data = "bW9jaw=="
+    vpc_id                             = "vpc-mock"
+    alb_controller_role_arn            = "arn:aws:iam::483026362307:role/mock"
+    karpenter_node_role_arn            = "arn:aws:iam::483026362307:role/mock"
+    karpenter_queue_name               = "mock-queue"
+    karpenter_instance_profile_name    = "mock-profile"
+    adot_role_arn                      = ""
+  }
+  mock_outputs_allowed_terraform_commands = ["validate", "plan"]
+}
+
+dependency "eks_secondary_training" {
+  config_path = "../../../secondary-account/us-west-2/eks-training"
+
+  mock_outputs = {
+    cluster_name                       = "ml-training-secondary-us-west-2"
+    cluster_endpoint                   = "https://mock-endpoint.eks.us-west-2.amazonaws.com"
+    cluster_certificate_authority_data = "bW9jaw=="
+    vpc_id                             = "vpc-mock"
+    alb_controller_role_arn            = "arn:aws:iam::159553542841:role/mock"
+    karpenter_node_role_arn            = "arn:aws:iam::159553542841:role/mock"
+    karpenter_queue_name               = "mock-queue"
+    karpenter_instance_profile_name    = "mock-profile"
+    adot_role_arn                      = ""
+  }
+  mock_outputs_allowed_terraform_commands = ["validate", "plan"]
+}
+
 inputs = {
-  cluster_name               = dependency.eks.outputs.cluster_name
-  cluster_endpoint           = dependency.eks.outputs.cluster_endpoint
-  cluster_ca_certificate     = dependency.eks.outputs.cluster_certificate_authority_data
-  assume_role_arn            = "arn:aws:iam::483026362307:role/TerraformExecutionRole"
-  spoke_clusters             = {}
+  cluster_name           = dependency.eks_hub.outputs.cluster_name
+  cluster_endpoint       = dependency.eks_hub.outputs.cluster_endpoint
+  cluster_ca_certificate = dependency.eks_hub.outputs.cluster_certificate_authority_data
+  assume_role_arn        = "arn:aws:iam::483026362307:role/TerraformExecutionRole"
+
+  # Hub OIDC for IRSA
+  oidc_provider_arn = dependency.eks_hub.outputs.oidc_provider_arn
+  oidc_provider     = dependency.eks_hub.outputs.oidc_provider
+
+  # Hub GitOps Bridge annotations
+  hub_annotations = {
+    aws_account_id             = "483026362307"
+    aws_region                 = "us-east-1"
+    cluster_type               = "training"
+    vpc_id                     = dependency.eks_hub.outputs.vpc_id
+    alb_controller_role_arn    = dependency.eks_hub.outputs.alb_controller_role_arn
+    external_dns_role_arn      = dependency.eks_hub.outputs.external_dns_role_arn
+    adot_role_arn              = dependency.eks_hub.outputs.adot_role_arn
+    karpenter_node_role_arn    = dependency.eks_hub.outputs.karpenter_node_role_arn
+    karpenter_queue_name       = dependency.eks_hub.outputs.karpenter_queue_name
+    karpenter_instance_profile = dependency.eks_hub.outputs.karpenter_instance_profile_name
+    amp_region                 = "us-east-1"
+    amp_remote_write_endpoint  = dependency.monitoring.outputs.amp_remote_write_endpoint
+    enable_karpenter           = "true"
+    enable_external_dns        = "true"
+    enable_adot                = "true"
+  }
+
+  # Spoke clusters
+  spoke_clusters = {
+    "ml-inference-main-us-west-2" = {
+      name         = "ml-inference-main-us-west-2"
+      server       = dependency.eks_inference.outputs.cluster_endpoint
+      ca_data      = dependency.eks_inference.outputs.cluster_certificate_authority_data
+      cluster_name = dependency.eks_inference.outputs.cluster_name
+      # Same account — no role_arn needed
+      annotations = {
+        aws_account_id             = "483026362307"
+        aws_region                 = "us-west-2"
+        cluster_type               = "inference"
+        vpc_id                     = dependency.eks_inference.outputs.vpc_id
+        alb_controller_role_arn    = dependency.eks_inference.outputs.alb_controller_role_arn
+        karpenter_node_role_arn    = dependency.eks_inference.outputs.karpenter_node_role_arn
+        karpenter_queue_name       = dependency.eks_inference.outputs.karpenter_queue_name
+        karpenter_instance_profile = dependency.eks_inference.outputs.karpenter_instance_profile_name
+        amp_region                 = "us-east-1"
+        amp_remote_write_endpoint  = dependency.monitoring.outputs.amp_remote_write_endpoint
+        enable_karpenter           = "true"
+        enable_external_dns        = "false"
+        enable_adot                = "true"
+      }
+    }
+    "ml-training-secondary-us-west-2" = {
+      name         = "ml-training-secondary-us-west-2"
+      server       = dependency.eks_secondary_training.outputs.cluster_endpoint
+      ca_data      = dependency.eks_secondary_training.outputs.cluster_certificate_authority_data
+      cluster_name = dependency.eks_secondary_training.outputs.cluster_name
+      role_arn     = "arn:aws:iam::159553542841:role/ArgoCD-Spoke-Access"
+      annotations = {
+        aws_account_id             = "159553542841"
+        aws_region                 = "us-west-2"
+        cluster_type               = "training"
+        vpc_id                     = dependency.eks_secondary_training.outputs.vpc_id
+        alb_controller_role_arn    = dependency.eks_secondary_training.outputs.alb_controller_role_arn
+        karpenter_node_role_arn    = dependency.eks_secondary_training.outputs.karpenter_node_role_arn
+        karpenter_queue_name       = dependency.eks_secondary_training.outputs.karpenter_queue_name
+        karpenter_instance_profile = dependency.eks_secondary_training.outputs.karpenter_instance_profile_name
+        amp_region                 = "us-east-1"
+        amp_remote_write_endpoint  = dependency.monitoring.outputs.amp_remote_write_endpoint
+        enable_karpenter           = "true"
+        enable_external_dns        = "false"
+        enable_adot                = "true"
+      }
+    }
+  }
 
   # Midway authentication
-  enable_cognito_auth    = true
-  acm_certificate_arn    = dependency.midway_auth.outputs.acm_certificate_arn
-  argocd_hostname        = "argocd.mlkeita.people.aws.dev"
-  alb_ingress_group_name = "ml-cluster-services"
-  cognito_user_pool_arn  = dependency.midway_auth.outputs.cognito_user_pool_arn
-  cognito_app_client_id  = dependency.midway_auth.outputs.cognito_app_client_ids["argocd"]
+  enable_cognito_auth      = true
+  acm_certificate_arn      = dependency.midway_auth.outputs.acm_certificate_arn
+  argocd_hostname          = "argocd.mlkeita.people.aws.dev"
+  alb_ingress_group_name   = "ml-cluster-services"
+  cognito_user_pool_arn    = dependency.midway_auth.outputs.cognito_user_pool_arn
+  cognito_app_client_id    = dependency.midway_auth.outputs.cognito_app_client_ids["argocd"]
   cognito_user_pool_domain = dependency.midway_auth.outputs.cognito_user_pool_domain
 
   # ApplicationSet bootstrap

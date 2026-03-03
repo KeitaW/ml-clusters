@@ -67,3 +67,18 @@ output "adot_role_arn" {
   description = "IAM role ARN for the ADOT Collector"
   value       = var.amp_workspace_arn != "" ? aws_iam_role.adot[0].arn : ""
 }
+
+output "aws_region" {
+  description = "AWS region of the cluster"
+  value       = var.aws_region
+}
+
+output "vpc_id" {
+  description = "VPC ID of the cluster"
+  value       = var.vpc_id
+}
+
+output "oidc_provider" {
+  description = "OIDC provider URL for the EKS cluster"
+  value       = module.eks.oidc_provider
+}

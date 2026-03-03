@@ -7,3 +7,8 @@ output "argocd_release_name" {
   description = "The name of the ArgoCD Helm release"
   value       = helm_release.argocd.name
 }
+
+output "argocd_controller_role_arn" {
+  description = "IAM role ARN for the ArgoCD application controller (IRSA)"
+  value       = aws_iam_role.argocd_controller.arn
+}

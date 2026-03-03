@@ -1,0 +1,36 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: karpenter
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions:
+    - missingkey=error
+  generators:
+    - clusters:
+        selector:
+          matchLabels:
+            enable_karpenter: "true"
+  template:
+    metadata:
+      name: 'karpenter-{{.name}}'
+    spec:
+      project: default
+      source:
+        repoURL: public.ecr.aws/karpenter
+        chart: karpenter
+        targetRevision: 1.2.1
+        helm:
+          valuesObject:
+            replicas: 2
+            settings:
+              clusterName: '{{index .metadata.annotations "cluster_name"}}'
+              interruptionQueue: '{{index .metadata.annotations "karpenter_queue_name"}}'
+      destination:
+        server: '{{.server}}'
+        namespace: kube-system
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
