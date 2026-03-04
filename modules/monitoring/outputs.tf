@@ -32,3 +32,8 @@ output "grafana_workspace_endpoint" {
   description = "Endpoint URL for the Grafana workspace"
   value       = var.enable_grafana ? aws_grafana_workspace.main[0].endpoint : ""
 }
+
+output "grafana_workspace_arn" {
+  description = "ARN of the Amazon Managed Grafana workspace"
+  value       = var.enable_grafana ? aws_grafana_workspace.main[0].arn : ""
+}

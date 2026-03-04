@@ -11,6 +11,15 @@ dependency "networking" {
   config_path = "../networking"
 }
 
+dependency "monitoring" {
+  config_path = "../monitoring"
+
+  mock_outputs = {
+    amp_workspace_arn = "arn:aws:aps:us-east-1:159553542841:workspace/ws-mock"
+  }
+  mock_outputs_allowed_terraform_commands = ["validate", "plan"]
+}
+
 inputs = {
   cluster_name          = "ml-training-secondary-us-east-1"
   vpc_id                = dependency.networking.outputs.vpc_id
@@ -25,6 +34,9 @@ inputs = {
   cluster_iam_role_use_name_prefix = false
   karpenter_controller_role_name   = "KarpenterController-ml-training-secondary-us-east-1"
   karpenter_node_role_name         = "KarpenterNode-ml-training-secondary-us-east-1"
+
+  # ADOT collector IRSA role for Prometheus remote write
+  amp_workspace_arn = dependency.monitoring.outputs.amp_workspace_arn
 
   # HyperPod observability and task governance
   enable_cloudwatch_observability = true

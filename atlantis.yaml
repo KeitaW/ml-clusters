@@ -92,6 +92,11 @@ projects:
     workflow: terragrunt
     execution_order_group: 2
 
+  - name: secondary-us-east-1-monitoring
+    dir: live/secondary-account/us-east-1/monitoring
+    workflow: terragrunt
+    execution_order_group: 2
+
   # --- Execution Order Group 3: EKS Clusters ---
   - name: main-us-east-1-eks-cluster
     dir: live/main-account/us-east-1/eks-cluster

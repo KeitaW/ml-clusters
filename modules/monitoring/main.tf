@@ -36,6 +36,18 @@ resource "aws_sns_topic_policy" "alerts" {
             "aws:SourceAccount" = data.aws_caller_identity.current.account_id
           }
         }
+      },
+      {
+        Sid       = "AllowGrafanaPublish"
+        Effect    = "Allow"
+        Principal = { Service = "grafana.amazonaws.com" }
+        Action    = "SNS:Publish"
+        Resource  = aws_sns_topic.alerts.arn
+        Condition = {
+          StringEquals = {
+            "aws:SourceAccount" = data.aws_caller_identity.current.account_id
+          }
+        }
       }
     ]
   })
@@ -88,12 +100,14 @@ resource "aws_prometheus_alert_manager_definition" "main" {
 resource "aws_grafana_workspace" "main" {
   count = var.enable_grafana ? 1 : 0
 
-  name                     = "ml-grafana-${var.account_name}-${var.aws_region}"
-  account_access_type      = "CURRENT_ACCOUNT"
-  authentication_providers = var.grafana_auth_providers
-  permission_type          = "CUSTOMER_MANAGED"
-  role_arn                 = aws_iam_role.grafana[0].arn
-  data_sources             = ["PROMETHEUS", "CLOUDWATCH"]
+  name                      = "ml-grafana-${var.account_name}-${var.aws_region}"
+  account_access_type       = "CURRENT_ACCOUNT"
+  authentication_providers  = var.grafana_auth_providers
+  permission_type           = "CUSTOMER_MANAGED"
+  role_arn                  = aws_iam_role.grafana[0].arn
+  data_sources              = ["PROMETHEUS", "CLOUDWATCH"]
+  grafana_version           = var.grafana_version
+  notification_destinations = ["SNS"]
 
   tags = var.tags
 }
@@ -191,6 +205,52 @@ resource "aws_iam_role_policy" "grafana_cloudwatch_read" {
       }
     ]
   })
+}
+
+resource "aws_iam_role_policy" "grafana_sns_publish" {
+  count = var.enable_grafana ? 1 : 0
+
+  name = "sns-publish-access"
+  role = aws_iam_role.grafana[0].id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = "sns:Publish"
+        Resource = aws_sns_topic.alerts.arn
+      }
+    ]
+  })
+}
+
+################################################################################
+# Grafana Role Associations — conditional on non-empty ID lists
+################################################################################
+
+resource "aws_grafana_role_association" "admin" {
+  count = var.enable_grafana && length(var.grafana_admin_user_ids) > 0 ? 1 : 0
+
+  workspace_id = aws_grafana_workspace.main[0].id
+  role         = "ADMIN"
+  user_ids     = var.grafana_admin_user_ids
+}
+
+resource "aws_grafana_role_association" "editor" {
+  count = var.enable_grafana && length(var.grafana_editor_group_ids) > 0 ? 1 : 0
+
+  workspace_id = aws_grafana_workspace.main[0].id
+  role         = "EDITOR"
+  group_ids    = var.grafana_editor_group_ids
+}
+
+resource "aws_grafana_role_association" "viewer" {
+  count = var.enable_grafana && length(var.grafana_viewer_group_ids) > 0 ? 1 : 0
+
+  workspace_id = aws_grafana_workspace.main[0].id
+  role         = "VIEWER"
+  group_ids    = var.grafana_viewer_group_ids
 }
 
 ################################################################################
