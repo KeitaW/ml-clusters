@@ -81,7 +81,7 @@ data "aws_iam_policy_document" "atlantis_terraform" {
     sid       = "AssumeTerraformExecutionRole"
     effect    = "Allow"
     actions   = ["sts:AssumeRole", "sts:TagSession"]
-    resources = [var.terraform_execution_role_arn]
+    resources = var.terraform_execution_role_arns
   }
 
   # S3 backend access — the backend config does not use assume_role,
