@@ -5,8 +5,8 @@ module "eks" {
   name               = var.cluster_name
   kubernetes_version = var.cluster_version
 
-  # Disable name_prefix to avoid 38-char limit with long cluster names
-  iam_role_use_name_prefix = false
+  # Keep name_prefix for cluster-level IAM role (changing it forces cluster replacement)
+  # Node group and Karpenter roles use explicit names below for multi-cluster support
 
   vpc_id     = var.vpc_id
   subnet_ids = var.private_subnet_ids
