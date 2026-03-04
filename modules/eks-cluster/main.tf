@@ -5,8 +5,7 @@ module "eks" {
   name               = var.cluster_name
   kubernetes_version = var.cluster_version
 
-  # Keep name_prefix for cluster-level IAM role (changing it forces cluster replacement)
-  # Node group and Karpenter roles use explicit names below for multi-cluster support
+  iam_role_use_name_prefix = var.cluster_iam_role_use_name_prefix
 
   vpc_id     = var.vpc_id
   subnet_ids = var.private_subnet_ids
@@ -17,27 +16,46 @@ module "eks" {
   endpoint_public_access = true
 
   # EKS managed add-ons — before_compute ensures addons install before node groups
-  addons = {
-    coredns = {
-      before_compute = true
-    }
-    kube-proxy = {
-      before_compute = true
-    }
-    eks-pod-identity-agent = {
-      before_compute = true
-    }
-    vpc-cni = {
-      before_compute       = true
-      configuration_values = jsonencode({
-        enableNetworkPolicy = "true"
-      })
-    }
-    aws-ebs-csi-driver = {
-      before_compute          = true
-      service_account_role_arn = aws_iam_role.ebs_csi.arn
-    }
-  }
+  addons = merge(
+    {
+      coredns = {
+        before_compute = true
+      }
+      kube-proxy = {
+        before_compute = true
+      }
+      eks-pod-identity-agent = {
+        before_compute = true
+      }
+      vpc-cni = {
+        before_compute = true
+        configuration_values = jsonencode({
+          enableNetworkPolicy = "true"
+        })
+      }
+      aws-ebs-csi-driver = {
+        before_compute           = true
+        service_account_role_arn = aws_iam_role.ebs_csi.arn
+      }
+    },
+    var.enable_cloudwatch_observability ? {
+      amazon-cloudwatch-observability = {
+        most_recent = true
+        configuration_values = jsonencode({
+          agent = { config = {
+            logs = { metrics_collected = { kubernetes = {
+              kueue_container_insights    = true
+              enhanced_container_insights = true
+            }, application_signals = {} } }
+            traces = { traces_collected = { application_signals = {} } }
+          } }
+        })
+      }
+    } : {},
+    var.enable_hyperpod_task_governance ? {
+      amazon-sagemaker-hyperpod-taskgovernance = { most_recent = true }
+    } : {},
+  )
 
   # System node group only - GPU nodes managed by Karpenter
   eks_managed_node_groups = {
@@ -47,6 +65,7 @@ module "eks" {
       min_size                 = 2
       max_size                 = 4
       desired_size             = 2
+      iam_role_name            = "system-node-group-${var.cluster_name}"
       iam_role_use_name_prefix = false
       use_name_prefix          = false
     }
@@ -95,6 +114,19 @@ resource "aws_iam_role" "ebs_csi" {
 resource "aws_iam_role_policy_attachment" "ebs_csi" {
   role       = aws_iam_role.ebs_csi.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
+}
+
+# CloudWatch Agent policy for system and Karpenter node roles (HyperPod observability)
+resource "aws_iam_role_policy_attachment" "cloudwatch_agent_system" {
+  count      = var.enable_cloudwatch_observability ? 1 : 0
+  role       = module.eks.eks_managed_node_groups["system"].iam_role_name
+  policy_arn = "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
+}
+
+resource "aws_iam_role_policy_attachment" "cloudwatch_agent_karpenter" {
+  count      = var.enable_cloudwatch_observability ? 1 : 0
+  role       = module.karpenter.node_iam_role_name
+  policy_arn = "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
 }
 
 # IRSA role for the AWS Load Balancer Controller
@@ -278,7 +310,10 @@ module "karpenter" {
 
   cluster_name = module.eks.cluster_name
 
-  # Disable name_prefix to avoid 38-char limit with long cluster names
+  # Use explicit names to avoid 38-char name_prefix limit with long cluster names
+  iam_role_name                 = var.karpenter_controller_role_name != "" ? var.karpenter_controller_role_name : null
+  iam_policy_name               = var.karpenter_controller_role_name != "" ? var.karpenter_controller_role_name : null
+  node_iam_role_name            = var.karpenter_node_role_name != "" ? var.karpenter_node_role_name : null
   iam_role_use_name_prefix      = false
   iam_policy_use_name_prefix    = false
   node_iam_role_use_name_prefix = false

@@ -54,6 +54,36 @@ variable "argocd_access_role_arns" {
   default     = []
 }
 
+variable "cluster_iam_role_use_name_prefix" {
+  description = "Use name_prefix for the cluster-level IAM role. Set false for clusters deployed with explicit role names (e.g. long cluster names exceeding 38-char prefix limit)."
+  type        = bool
+  default     = true
+}
+
+variable "karpenter_controller_role_name" {
+  description = "Override Karpenter controller IAM role/policy name. Empty uses module default (KarpenterController)."
+  type        = string
+  default     = ""
+}
+
+variable "karpenter_node_role_name" {
+  description = "Override Karpenter node IAM role name. Empty uses module default (Karpenter-{cluster_name})."
+  type        = string
+  default     = ""
+}
+
+variable "enable_cloudwatch_observability" {
+  description = "Install amazon-cloudwatch-observability EKS add-on for HyperPod dashboard"
+  type        = bool
+  default     = false
+}
+
+variable "enable_hyperpod_task_governance" {
+  description = "Install amazon-sagemaker-hyperpod-taskgovernance EKS add-on (Kueue)"
+  type        = bool
+  default     = false
+}
+
 variable "tags" {
   description = "Tags to apply to all resources"
   type        = map(string)
