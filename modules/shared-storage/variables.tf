@@ -19,8 +19,9 @@ variable "private_subnet_ids" {
 }
 
 variable "kms_key_arn" {
-  description = "KMS key ARN for encryption of EFS and FSx filesystems"
+  description = "KMS key ARN for encryption of EFS and FSx filesystems. When null, uses service-managed keys."
   type        = string
+  default     = null
 }
 
 variable "s3_data_bucket_arn" {
