@@ -54,7 +54,6 @@ inputs = {
   enable_eks_autoscaling  = true
   eks_autoscaling_role_arn = dependency.iam.outputs.hyperpod_karpenter_role_arn
 
-  # Start with system group only; GPU groups added when quota confirmed
   instance_groups = [
     {
       instance_group_name = "system"
@@ -63,6 +62,21 @@ inputs = {
       life_cycle_config = {
         source_s3_uri = "s3://ml-data-replica-159553542841-us-east-1/hyperpod/lifecycle-scripts/"
         on_create     = "on_create.sh"
+      }
+    },
+    {
+      instance_group_name   = "gpu-b200"
+      instance_type         = "ml.p6-b200.48xlarge"
+      instance_count        = 6
+      training_plan_arn     = "arn:aws:sagemaker:us-east-1:159553542841:training-plan/hf-experiment-b200-0304"
+      on_start_deep_health_checks = ["InstanceStress", "InstanceConnectivity"]
+      life_cycle_config = {
+        source_s3_uri = "s3://ml-data-replica-159553542841-us-east-1/hyperpod/lifecycle-scripts/"
+        on_create     = "on_create.sh"
+      }
+      override_vpc_config = {
+        subnet_ids         = [dependency.networking.outputs.private_subnet_ids[2]]
+        security_group_ids = [dependency.networking.outputs.efa_security_group_id]
       }
     },
   ]
