@@ -36,6 +36,30 @@ variable "grafana_auth_providers" {
   default     = ["AWS_SSO"]
 }
 
+variable "grafana_version" {
+  description = "Grafana workspace version. See AWS docs for supported versions."
+  type        = string
+  default     = "10.4"
+}
+
+variable "grafana_admin_user_ids" {
+  description = "IAM Identity Center user IDs to assign the ADMIN role in Grafana"
+  type        = list(string)
+  default     = []
+}
+
+variable "grafana_editor_group_ids" {
+  description = "IAM Identity Center group IDs to assign the EDITOR role in Grafana"
+  type        = list(string)
+  default     = []
+}
+
+variable "grafana_viewer_group_ids" {
+  description = "IAM Identity Center group IDs to assign the VIEWER role in Grafana"
+  type        = list(string)
+  default     = []
+}
+
 variable "s3_replication_bucket_name" {
   description = "Source S3 bucket name for replication lag alarm. Leave empty to skip this alarm."
   type        = string

@@ -11,7 +11,7 @@ dependency "networking" {
 }
 
 inputs = {
-  account_name       = "main"
+  account_name       = "secondary"
   aws_region         = "us-east-1"
   vpc_id             = dependency.networking.outputs.vpc_id
   private_subnet_ids = dependency.networking.outputs.private_subnet_ids
@@ -19,9 +19,4 @@ inputs = {
   # Grafana enabled — IAM Identity Center is in ap-northeast-1 (AMG supports cross-region SSO)
   enable_grafana         = true
   grafana_admin_user_ids = ["67146a88-1001-702c-39d7-196888d63d16"] # mlkeita SSO user
-
-  # S3 replication not yet configured — alarm deferred
-  # s3_replication_bucket_name      = "ml-data-central-483026362307-us-east-1"
-  # s3_replication_dest_bucket_name = "ml-data-replica-..."
-  # s3_replication_rule_id          = "..."
 }

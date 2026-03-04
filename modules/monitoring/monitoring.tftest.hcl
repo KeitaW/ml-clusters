@@ -62,8 +62,87 @@ run "grafana_enabled" {
   }
 
   assert {
+    condition     = aws_grafana_workspace.main[0].grafana_version == "10.4"
+    error_message = "Grafana version should default to 10.4"
+  }
+
+  assert {
+    condition     = contains(aws_grafana_workspace.main[0].notification_destinations, "SNS")
+    error_message = "Grafana should have SNS as a notification destination"
+  }
+
+  assert {
     condition     = aws_iam_role.grafana[0].name == "ml-grafana-test-us-east-1"
     error_message = "Grafana IAM role name should follow naming convention"
+  }
+
+  assert {
+    condition     = aws_iam_role_policy.grafana_sns_publish[0].name == "sns-publish-access"
+    error_message = "Grafana should have an SNS publish IAM policy"
+  }
+}
+
+run "grafana_role_associations" {
+  command = plan
+
+  variables {
+    enable_grafana         = true
+    grafana_admin_user_ids = ["user-1234"]
+    grafana_editor_group_ids = ["group-editors"]
+    grafana_viewer_group_ids = ["group-viewers"]
+  }
+
+  assert {
+    condition     = length(aws_grafana_role_association.admin) == 1
+    error_message = "Should create ADMIN role association when user IDs provided"
+  }
+
+  assert {
+    condition     = aws_grafana_role_association.admin[0].role == "ADMIN"
+    error_message = "Admin association should have ADMIN role"
+  }
+
+  assert {
+    condition     = length(aws_grafana_role_association.editor) == 1
+    error_message = "Should create EDITOR role association when group IDs provided"
+  }
+
+  assert {
+    condition     = aws_grafana_role_association.editor[0].role == "EDITOR"
+    error_message = "Editor association should have EDITOR role"
+  }
+
+  assert {
+    condition     = length(aws_grafana_role_association.viewer) == 1
+    error_message = "Should create VIEWER role association when group IDs provided"
+  }
+
+  assert {
+    condition     = aws_grafana_role_association.viewer[0].role == "VIEWER"
+    error_message = "Viewer association should have VIEWER role"
+  }
+}
+
+run "grafana_no_role_associations_when_empty" {
+  command = plan
+
+  variables {
+    enable_grafana = true
+  }
+
+  assert {
+    condition     = length(aws_grafana_role_association.admin) == 0
+    error_message = "Should not create ADMIN association when user IDs empty"
+  }
+
+  assert {
+    condition     = length(aws_grafana_role_association.editor) == 0
+    error_message = "Should not create EDITOR association when group IDs empty"
+  }
+
+  assert {
+    condition     = length(aws_grafana_role_association.viewer) == 0
+    error_message = "Should not create VIEWER association when group IDs empty"
   }
 }
 
