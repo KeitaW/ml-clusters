@@ -9,10 +9,21 @@ include "envcommon" {
 
 dependency "networking" {
   config_path = "../networking"
+
+  mock_outputs = {
+    vpc_id             = "vpc-mock"
+    private_subnet_ids = ["subnet-mock"]
+  }
+  mock_outputs_allowed_terraform_commands = ["validate", "plan"]
 }
 
 dependency "s3_replica" {
   config_path = "../s3-data-replica"
+
+  mock_outputs = {
+    bucket_arn = "arn:aws:s3:::mock-bucket"
+  }
+  mock_outputs_allowed_terraform_commands = ["validate", "plan"]
 }
 
 inputs = {
