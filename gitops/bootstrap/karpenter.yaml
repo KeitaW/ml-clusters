@@ -24,6 +24,8 @@ spec:
         helm:
           valuesObject:
             replicas: 2
+            serviceAccount:
+              name: karpenter
             settings:
               clusterName: '{{index .metadata.annotations "cluster_name"}}'
               interruptionQueue: '{{index .metadata.annotations "karpenter_queue_name"}}'

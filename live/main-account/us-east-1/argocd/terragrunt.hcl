@@ -49,7 +49,8 @@ dependency "eks_secondary" {
     karpenter_instance_profile_name    = "mock-profile"
     adot_role_arn                      = ""
   }
-  mock_outputs_allowed_terraform_commands = ["validate", "plan"]
+  # Secondary account not yet deployed — allow mocks on apply until TerraformExecutionRole exists
+  mock_outputs_allowed_terraform_commands = ["validate", "plan", "apply", "destroy"]
 }
 
 inputs = {
@@ -95,6 +96,7 @@ inputs = {
         cluster_type               = "inference"
         vpc_id                     = dependency.eks_spoke_west2.outputs.vpc_id
         alb_controller_role_arn    = dependency.eks_spoke_west2.outputs.alb_controller_role_arn
+        adot_role_arn              = dependency.eks_spoke_west2.outputs.adot_role_arn
         karpenter_node_role_arn    = dependency.eks_spoke_west2.outputs.karpenter_node_role_arn
         karpenter_queue_name       = dependency.eks_spoke_west2.outputs.karpenter_queue_name
         karpenter_instance_profile = dependency.eks_spoke_west2.outputs.karpenter_instance_profile_name

@@ -13,6 +13,11 @@ output "amp_workspace_endpoint" {
   value       = aws_prometheus_workspace.main.prometheus_endpoint
 }
 
+output "amp_remote_write_endpoint" {
+  description = "Remote write endpoint for the AMP workspace"
+  value       = "${aws_prometheus_workspace.main.prometheus_endpoint}api/v1/remote_write"
+}
+
 output "sns_topic_arn" {
   description = "ARN of the SNS topic for alarm notifications"
   value       = aws_sns_topic.alerts.arn

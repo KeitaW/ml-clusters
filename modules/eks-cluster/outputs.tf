@@ -45,7 +45,7 @@ output "karpenter_queue_name" {
 
 output "karpenter_instance_profile_name" {
   description = "The name of the Karpenter instance profile"
-  value       = module.karpenter.instance_profile_name
+  value       = module.karpenter.instance_profile_name != null ? module.karpenter.instance_profile_name : ""
 }
 
 output "ebs_csi_role_arn" {
