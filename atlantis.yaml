@@ -94,6 +94,16 @@ projects:
     workflow: terragrunt
     execution_order_group: 4
 
+  - name: main-us-east-1-hyperpod-eks
+    dir: live/main-account/us-east-1/hyperpod-eks
+    workflow: terragrunt
+    execution_order_group: 4
+
+  - name: main-us-west-2-hyperpod-slurm
+    dir: live/main-account/us-west-2/hyperpod-slurm
+    workflow: terragrunt
+    execution_order_group: 4
+
   - name: secondary-us-west-2-hyperpod-slurm
     dir: live/secondary-account/us-west-2/hyperpod-slurm
     workflow: terragrunt
