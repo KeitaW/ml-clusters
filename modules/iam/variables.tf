@@ -20,6 +20,12 @@ variable "create_terraform_execution_role" {
   default     = true
 }
 
+variable "terraform_execution_trust_account_ids" {
+  description = "Account IDs allowed to assume TerraformExecutionRole. Defaults to the current account if empty."
+  type        = list(string)
+  default     = []
+}
+
 variable "create_parallelcluster_roles" {
   description = "Whether to create ParallelCluster head node and compute IAM roles"
   type        = bool
@@ -28,6 +34,12 @@ variable "create_parallelcluster_roles" {
 
 variable "create_hyperpod_role" {
   description = "Whether to create the HyperPod execution role"
+  type        = bool
+  default     = false
+}
+
+variable "create_hyperpod_karpenter_role" {
+  description = "Whether to create the HyperPod Karpenter autoscaling role"
   type        = bool
   default     = false
 }

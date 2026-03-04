@@ -1,16 +1,17 @@
 # Precondition: EKS cluster ARN required when orchestrator is "eks"
 locals {
-  is_eks = var.orchestrator == "eks"
+  is_eks                = var.orchestrator == "eks"
+  lifecycle_scripts_dir = var.lifecycle_scripts_local_path != "" ? var.lifecycle_scripts_local_path : "${path.module}/lifecycle-scripts"
 }
 
 # Upload lifecycle scripts to S3
 resource "aws_s3_object" "lifecycle_scripts" {
-  for_each = var.lifecycle_scripts_s3_bucket != "" ? fileset("${path.module}/../../cluster-configs/hyperpod/lifecycle-scripts/base-config/", "*") : toset([])
+  for_each = var.lifecycle_scripts_s3_bucket != "" ? fileset(local.lifecycle_scripts_dir, "*") : toset([])
 
   bucket = var.lifecycle_scripts_s3_bucket
   key    = "hyperpod/lifecycle-scripts/${each.value}"
-  source = "${path.module}/../../cluster-configs/hyperpod/lifecycle-scripts/base-config/${each.value}"
-  etag   = filemd5("${path.module}/../../cluster-configs/hyperpod/lifecycle-scripts/base-config/${each.value}")
+  source = "${local.lifecycle_scripts_dir}/${each.value}"
+  etag   = filemd5("${local.lifecycle_scripts_dir}/${each.value}")
 }
 
 resource "awscc_sagemaker_cluster" "this" {
@@ -33,6 +34,16 @@ resource "awscc_sagemaker_cluster" "this" {
     }
   }]
 
+  # Karpenter autoscaling (EKS only)
+  auto_scaling = var.auto_scaling_enabled ? {
+    mode             = "Enable"
+    auto_scaler_type = "Karpenter"
+  } : null
+
+  cluster_role = var.auto_scaling_enabled ? var.cluster_role_arn : null
+
+  node_provisioning_mode = var.node_provisioning_mode
+
   node_recovery = "Automatic"
 
   vpc_config = {
@@ -49,6 +60,10 @@ resource "awscc_sagemaker_cluster" "this" {
     precondition {
       condition     = !local.is_eks || var.eks_cluster_arn != ""
       error_message = "eks_cluster_arn is required when orchestrator is 'eks'"
+    }
+    precondition {
+      condition     = !var.auto_scaling_enabled || var.cluster_role_arn != ""
+      error_message = "cluster_role_arn is required when auto_scaling_enabled is true"
     }
   }
 }

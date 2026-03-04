@@ -65,6 +65,30 @@ variable "eks_cluster_arn" {
   default     = ""
 }
 
+variable "auto_scaling_enabled" {
+  description = "Enable Karpenter-based autoscaling for EKS-orchestrated HyperPod"
+  type        = bool
+  default     = false
+}
+
+variable "cluster_role_arn" {
+  description = "IAM role ARN for HyperPod cluster-level operations (Karpenter autoscaling). Required when auto_scaling_enabled=true."
+  type        = string
+  default     = ""
+}
+
+variable "node_provisioning_mode" {
+  description = "Node provisioning mode: 'Continuous' for dynamic provisioning, null for standard"
+  type        = string
+  default     = null
+}
+
+variable "lifecycle_scripts_local_path" {
+  description = "Local path to lifecycle scripts directory. Defaults to module's embedded base-config scripts."
+  type        = string
+  default     = ""
+}
+
 variable "tags" {
   description = "Tags to apply to resources"
   type        = map(string)
