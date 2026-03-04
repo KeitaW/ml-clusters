@@ -23,7 +23,10 @@ inputs = {
   cluster_endpoint              = dependency.eks.outputs.cluster_endpoint
   cluster_ca_certificate        = dependency.eks.outputs.cluster_certificate_authority_data
   assume_role_arn               = "arn:aws:iam::483026362307:role/TerraformExecutionRole"
-  terraform_execution_role_arn  = "arn:aws:iam::483026362307:role/TerraformExecutionRole"
+  terraform_execution_role_arns = [
+    "arn:aws:iam::483026362307:role/TerraformExecutionRole",
+    "arn:aws:iam::159553542841:role/TerraformExecutionRole",
+  ]
   tfstate_bucket_name           = "ml-clusters-tfstate-483026362307"
   kms_key_arn                   = dependency.iam.outputs.kms_key_arn
   github_user                   = "KeitaW"

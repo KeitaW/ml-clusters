@@ -121,9 +121,9 @@ variable "cognito_user_pool_domain" {
   default     = ""
 }
 
-variable "terraform_execution_role_arn" {
-  description = "ARN of the TerraformExecutionRole that Atlantis assumes for plan/apply"
-  type        = string
+variable "terraform_execution_role_arns" {
+  description = "List of TerraformExecutionRole ARNs that Atlantis can assume for plan/apply (supports cross-account)"
+  type        = list(string)
 }
 
 variable "tfstate_bucket_name" {
