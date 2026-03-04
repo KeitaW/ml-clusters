@@ -12,5 +12,5 @@ inputs = {
   create_terraform_execution_role = true
   create_parallelcluster_roles   = true
   create_hyperpod_role           = false
-  create_s3_replication_role     = true
+  create_s3_replication_role     = false
 }

@@ -4,8 +4,9 @@ variable "bucket_name" {
 }
 
 variable "kms_key_arn" {
-  description = "ARN of the KMS key for server-side encryption (SSE-KMS)"
+  description = "ARN of the KMS key for server-side encryption (SSE-KMS). When null, uses SSE-S3 (AES256)."
   type        = string
+  default     = null
 }
 
 variable "replication_source_role_arns" {
