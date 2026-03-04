@@ -13,6 +13,11 @@ dependency "networking" {
 
 dependency "monitoring" {
   config_path = "../monitoring"
+
+  mock_outputs = {
+    amp_workspace_arn = "arn:aws:aps:us-east-1:159553542841:workspace/ws-mock"
+  }
+  mock_outputs_allowed_terraform_commands = ["validate", "plan"]
 }
 
 inputs = {
