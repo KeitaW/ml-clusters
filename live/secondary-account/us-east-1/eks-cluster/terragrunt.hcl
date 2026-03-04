@@ -14,7 +14,8 @@ dependency "networking" {
 inputs = {
   cluster_name          = "ml-training-secondary-us-east-1"
   vpc_id                = dependency.networking.outputs.vpc_id
-  private_subnet_ids    = dependency.networking.outputs.private_subnet_ids
+  # Cluster was created with 2 AZs (us-east-1a/b); EKS forbids adding new AZs post-creation
+  private_subnet_ids    = slice(dependency.networking.outputs.private_subnet_ids, 0, 2)
   efa_security_group_id = dependency.networking.outputs.efa_security_group_id
 
   # ArgoCD access — disabled until ArgoCD-Spoke-Access role is created
