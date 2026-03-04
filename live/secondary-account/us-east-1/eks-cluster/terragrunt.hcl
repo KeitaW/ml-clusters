@@ -20,6 +20,11 @@ inputs = {
   # ArgoCD access — disabled until ArgoCD-Spoke-Access role is created
   argocd_access_role_arns = []
 
+  # IAM role names — match deployed state (explicit names, no name_prefix)
+  cluster_iam_role_use_name_prefix = false
+  karpenter_controller_role_name   = "KarpenterController-ml-training-secondary-us-east-1"
+  karpenter_node_role_name         = "KarpenterNode-ml-training-secondary-us-east-1"
+
   # HyperPod observability and task governance
   enable_cloudwatch_observability = true
   enable_hyperpod_task_governance = true

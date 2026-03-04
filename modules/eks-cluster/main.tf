@@ -5,8 +5,7 @@ module "eks" {
   name               = var.cluster_name
   kubernetes_version = var.cluster_version
 
-  # Keep name_prefix for cluster-level IAM role (changing it forces cluster replacement)
-  # Node group and Karpenter roles use explicit names below for multi-cluster support
+  iam_role_use_name_prefix = var.cluster_iam_role_use_name_prefix
 
   vpc_id     = var.vpc_id
   subnet_ids = var.private_subnet_ids
@@ -66,6 +65,7 @@ module "eks" {
       min_size                 = 2
       max_size                 = 4
       desired_size             = 2
+      iam_role_name            = "system-node-group-${var.cluster_name}"
       iam_role_use_name_prefix = false
       use_name_prefix          = false
     }
@@ -310,7 +310,10 @@ module "karpenter" {
 
   cluster_name = module.eks.cluster_name
 
-  # Disable name_prefix to avoid 38-char limit with long cluster names
+  # Use explicit names to avoid 38-char name_prefix limit with long cluster names
+  iam_role_name                 = var.karpenter_controller_role_name != "" ? var.karpenter_controller_role_name : null
+  iam_policy_name               = var.karpenter_controller_role_name != "" ? var.karpenter_controller_role_name : null
+  node_iam_role_name            = var.karpenter_node_role_name != "" ? var.karpenter_node_role_name : null
   iam_role_use_name_prefix      = false
   iam_policy_use_name_prefix    = false
   node_iam_role_use_name_prefix = false
