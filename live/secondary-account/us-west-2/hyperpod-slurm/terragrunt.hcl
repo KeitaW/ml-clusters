@@ -34,15 +34,18 @@ generate "awscc_provider" {
 }
 
 inputs = {
-  cluster_name            = "ml-hyperpod-slurm-secondary-us-west-2"
-  orchestrator            = "slurm"
-  execution_role_arn      = dependency.iam.outputs.hyperpod_execution_role_arn
-  vpc_id                  = dependency.networking.outputs.vpc_id
-  private_subnet_ids      = dependency.networking.outputs.private_subnet_ids
-  efa_security_group_id   = dependency.networking.outputs.efa_security_group_id
-  fsx_filesystem_id       = dependency.shared_storage.outputs.fsx_filesystem_id
+  cluster_name          = "ml-hyperpod-slurm-secondary-us-west-2"
+  orchestrator          = "slurm"
+  execution_role_arn    = dependency.iam.outputs.hyperpod_execution_role_arn
+  vpc_id                = dependency.networking.outputs.vpc_id
+  private_subnet_ids    = dependency.networking.outputs.private_subnet_ids
+  efa_security_group_id = dependency.networking.outputs.efa_security_group_id
+  fsx_filesystem_id     = dependency.shared_storage.outputs.fsx_filesystem_id
+
   lifecycle_scripts_s3_bucket = "ml-data-replica-159553542841-us-west-2"
+
   # GPU workers removed — deploy controller only until p5 quota is confirmed
+  # slurm_provisioning_parameters deferred until gpu-workers group is added
   instance_groups = [
     {
       instance_group_name = "controller"
@@ -50,8 +53,9 @@ inputs = {
       instance_count      = 1
       life_cycle_config = {
         source_s3_uri = "s3://ml-data-replica-159553542841-us-west-2/hyperpod/lifecycle-scripts/"
-        on_create      = "on_create.sh"
+        on_create     = "on_create.sh"
       }
+      ebs_volume_size_gb = 100
     },
   ]
 }

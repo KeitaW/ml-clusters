@@ -48,13 +48,11 @@ inputs = {
   fsx_filesystem_id       = dependency.shared_storage.outputs.fsx_filesystem_id
 
   # Lifecycle scripts for EKS
-  lifecycle_scripts_s3_bucket  = "ml-data-replica-159553542841-us-east-1"
-  lifecycle_scripts_local_path = "${dirname(find_in_parent_folders("terragrunt.hcl"))}/../cluster-configs/hyperpod/lifecycle-scripts/eks-config"
+  lifecycle_scripts_s3_bucket = "ml-data-replica-159553542841-us-east-1"
 
   # Karpenter autoscaling
-  auto_scaling_enabled   = true
-  cluster_role_arn       = dependency.iam.outputs.hyperpod_karpenter_role_arn
-  node_provisioning_mode = "Continuous"
+  enable_eks_autoscaling  = true
+  eks_autoscaling_role_arn = dependency.iam.outputs.hyperpod_karpenter_role_arn
 
   # Start with system group only; GPU groups added when quota confirmed
   instance_groups = [
