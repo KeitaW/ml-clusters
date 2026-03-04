@@ -30,6 +30,16 @@ projects:
     workflow: terragrunt
     execution_order_group: 0
 
+  - name: secondary-us-east-1-iam
+    dir: live/secondary-account/us-east-1/iam
+    workflow: terragrunt
+    execution_order_group: 0
+
+  - name: secondary-us-east-1-networking
+    dir: live/secondary-account/us-east-1/networking
+    workflow: terragrunt
+    execution_order_group: 0
+
   # --- Execution Order Group 1: S3 Buckets ---
   - name: main-us-east-1-s3-central-data
     dir: live/main-account/us-east-1/s3-central-data
@@ -48,6 +58,11 @@ projects:
 
   - name: secondary-us-west-2-s3-data-replica
     dir: live/secondary-account/us-west-2/s3-data-replica
+    workflow: terragrunt
+    execution_order_group: 1
+
+  - name: secondary-us-east-1-s3-data-replica
+    dir: live/secondary-account/us-east-1/s3-data-replica
     workflow: terragrunt
     execution_order_group: 1
 
@@ -72,6 +87,11 @@ projects:
     workflow: terragrunt
     execution_order_group: 2
 
+  - name: secondary-us-east-1-shared-storage
+    dir: live/secondary-account/us-east-1/shared-storage
+    workflow: terragrunt
+    execution_order_group: 2
+
   # --- Execution Order Group 3: EKS Clusters ---
   - name: main-us-east-1-eks-cluster
     dir: live/main-account/us-east-1/eks-cluster
@@ -85,6 +105,11 @@ projects:
 
   - name: secondary-us-west-2-eks-cluster
     dir: live/secondary-account/us-west-2/eks-cluster
+    workflow: terragrunt
+    execution_order_group: 3
+
+  - name: secondary-us-east-1-eks-cluster
+    dir: live/secondary-account/us-east-1/eks-cluster
     workflow: terragrunt
     execution_order_group: 3
 
@@ -106,6 +131,11 @@ projects:
 
   - name: secondary-us-west-2-hyperpod-slurm
     dir: live/secondary-account/us-west-2/hyperpod-slurm
+    workflow: terragrunt
+    execution_order_group: 4
+
+  - name: secondary-us-east-1-hyperpod-eks
+    dir: live/secondary-account/us-east-1/hyperpod-eks
     workflow: terragrunt
     execution_order_group: 4
 

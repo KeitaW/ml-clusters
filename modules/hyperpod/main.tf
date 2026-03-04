@@ -3,8 +3,9 @@
 ###############################################################################
 
 locals {
-  is_eks   = var.orchestrator == "eks"
-  is_slurm = var.orchestrator == "slurm"
+  is_eks                = var.orchestrator == "eks"
+  is_slurm              = var.orchestrator == "slurm"
+  lifecycle_scripts_dir = "${path.module}/${var.lifecycle_scripts_path}/base-config"
 }
 
 ###############################################################################
@@ -25,12 +26,12 @@ resource "aws_cloudwatch_log_group" "cluster" {
 ###############################################################################
 
 resource "aws_s3_object" "lifecycle_scripts" {
-  for_each = var.lifecycle_scripts_s3_bucket != "" ? fileset("${path.module}/${var.lifecycle_scripts_path}/base-config/", "**") : toset([])
+  for_each = var.lifecycle_scripts_s3_bucket != "" ? fileset(local.lifecycle_scripts_dir, "**") : toset([])
 
   bucket = var.lifecycle_scripts_s3_bucket
   key    = "${var.lifecycle_scripts_s3_prefix}/${each.value}"
-  source = "${path.module}/${var.lifecycle_scripts_path}/base-config/${each.value}"
-  etag   = filemd5("${path.module}/${var.lifecycle_scripts_path}/base-config/${each.value}")
+  source = "${local.lifecycle_scripts_dir}/${each.value}"
+  etag   = filemd5("${local.lifecycle_scripts_dir}/${each.value}")
 }
 
 ###############################################################################

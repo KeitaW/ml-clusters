@@ -8,12 +8,12 @@ include "envcommon" {
 }
 
 inputs = {
-  cross_account_ids              = ["483026362307"]
-  create_terraform_execution_role = true
-  create_parallelcluster_roles   = false
-  create_hyperpod_role           = true
-  create_hyperpod_karpenter_role = true
-  create_s3_replication_role     = false
+  cross_account_ids               = ["483026362307"]
+  create_terraform_execution_role = false
+  create_parallelcluster_roles    = false
+  create_hyperpod_role            = true
+  create_hyperpod_karpenter_role  = true
+  create_s3_replication_role      = false
 
   # Trust the main account for cross-account role assumption
   terraform_execution_trust_account_ids = ["483026362307"]

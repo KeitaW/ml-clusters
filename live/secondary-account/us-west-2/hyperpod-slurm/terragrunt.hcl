@@ -25,17 +25,9 @@ generate "awscc_provider" {
   contents  = <<-EOF
     provider "awscc" {
       region = "us-west-2"
-      assume_role {
-        role_arn = "arn:aws:iam::159553542841:role/TerraformExecutionRole"
-      }
-    }
 
-    terraform {
-      required_providers {
-        awscc = {
-          source  = "hashicorp/awscc"
-          version = ">= 1.25.0"
-        }
+      assume_role = {
+        role_arn = "arn:aws:iam::159553542841:role/TerraformExecutionRole"
       }
     }
   EOF
@@ -52,18 +44,8 @@ inputs = {
 
   lifecycle_scripts_s3_bucket = "ml-data-replica-159553542841-us-west-2"
 
-  slurm_provisioning_parameters = {
-    controller_group = "controller"
-    worker_groups = [
-      {
-        instance_group_name = "gpu-workers"
-        partition_name      = "gpu"
-      }
-    ]
-    fsx_dns_name   = dependency.shared_storage.outputs.fsx_dns_name
-    fsx_mount_name = dependency.shared_storage.outputs.fsx_mount_name
-  }
-
+  # GPU workers removed — deploy controller only until p5 quota is confirmed
+  # slurm_provisioning_parameters deferred until gpu-workers group is added
   instance_groups = [
     {
       instance_group_name = "controller"
@@ -74,18 +56,6 @@ inputs = {
         on_create     = "on_create.sh"
       }
       ebs_volume_size_gb = 100
-    },
-    {
-      instance_group_name = "gpu-workers"
-      instance_type       = "ml.p5.48xlarge"
-      instance_count      = 8
-      min_instance_count  = 4
-      life_cycle_config = {
-        source_s3_uri = "s3://ml-data-replica-159553542841-us-west-2/hyperpod/lifecycle-scripts/"
-        on_create     = "on_create.sh"
-      }
-      ebs_volume_size_gb          = 500
-      on_start_deep_health_checks = ["InstanceStress", "InstanceConnectivity"]
     },
   ]
 }

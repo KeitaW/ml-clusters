@@ -151,9 +151,9 @@ variable "lifecycle_scripts_s3_prefix" {
 }
 
 variable "lifecycle_scripts_path" {
-  description = "Local path to lifecycle scripts directory (relative to module root)"
+  description = "Path to lifecycle scripts directory (relative to module root). Must contain a base-config/ subdirectory."
   type        = string
-  default     = "../../cluster-configs/hyperpod/lifecycle-scripts"
+  default     = "lifecycle-scripts"
 }
 
 ###############################################################################

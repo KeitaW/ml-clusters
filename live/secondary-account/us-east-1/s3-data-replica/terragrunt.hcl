@@ -12,8 +12,7 @@ dependency "iam" {
 }
 
 inputs = {
-  bucket_name                = "ml-data-replica-159553542841-us-west-2"
-  kms_key_arn                = dependency.iam.outputs.kms_key_arn
-  # Replication deferred — S3ReplicationRole was destroyed in PR #13
+  bucket_name                 = "ml-data-replica-159553542841-us-east-1"
+  kms_key_arn                 = dependency.iam.outputs.kms_key_arn
   replication_source_role_arns = []
 }

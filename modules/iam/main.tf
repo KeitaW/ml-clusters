@@ -74,8 +74,13 @@ data "aws_iam_policy_document" "terraform_execution_assume_role" {
     effect = "Allow"
 
     principals {
-      type        = "AWS"
-      identifiers = ["arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"]
+      type = "AWS"
+      identifiers = [
+        for id in (length(var.terraform_execution_trust_account_ids) > 0
+          ? var.terraform_execution_trust_account_ids
+          : [data.aws_caller_identity.current.account_id]
+        ) : "arn:aws:iam::${id}:root"
+      ]
     }
 
     actions = ["sts:AssumeRole", "sts:TagSession"]
@@ -346,6 +351,37 @@ data "aws_iam_policy_document" "hyperpod_execution" {
 
     resources = ["*"]
   }
+
+  statement {
+    sid    = "VPCAccess"
+    effect = "Allow"
+
+    actions = [
+      "ec2:DescribeSubnets",
+      "ec2:DescribeVpcs",
+      "ec2:DescribeSecurityGroups",
+      "ec2:DescribeNetworkInterfaces",
+      "ec2:CreateNetworkInterface",
+      "ec2:CreateNetworkInterfacePermission",
+      "ec2:DeleteNetworkInterface",
+      "ec2:DeleteNetworkInterfacePermission",
+    ]
+
+    resources = ["*"]
+  }
+
+  statement {
+    sid    = "KMSAccess"
+    effect = "Allow"
+
+    actions = [
+      "kms:Decrypt",
+      "kms:DescribeKey",
+      "kms:GenerateDataKey",
+    ]
+
+    resources = [aws_kms_key.shared.arn]
+  }
 }
 
 resource "aws_iam_role" "hyperpod_execution" {
@@ -370,6 +406,82 @@ resource "aws_iam_role_policy" "hyperpod_execution" {
   name   = "HyperPodExecutionPolicy"
   role   = aws_iam_role.hyperpod_execution[0].id
   policy = data.aws_iam_policy_document.hyperpod_execution[0].json
+}
+
+###############################################################################
+# HyperPod Karpenter Autoscaling Role
+###############################################################################
+
+data "aws_iam_policy_document" "hyperpod_karpenter_assume_role" {
+  count = var.create_hyperpod_karpenter_role ? 1 : 0
+
+  statement {
+    effect = "Allow"
+
+    principals {
+      type        = "Service"
+      identifiers = ["hyperpod.sagemaker.amazonaws.com"]
+    }
+
+    actions = ["sts:AssumeRole"]
+  }
+}
+
+data "aws_iam_policy_document" "hyperpod_karpenter" {
+  count = var.create_hyperpod_karpenter_role ? 1 : 0
+
+  statement {
+    sid    = "HyperPodNodeManagement"
+    effect = "Allow"
+
+    actions = [
+      "sagemaker:BatchAddClusterNodes",
+      "sagemaker:BatchDeleteClusterNodes",
+    ]
+
+    resources = ["arn:aws:sagemaker:*:${data.aws_caller_identity.current.account_id}:cluster/*"]
+  }
+
+  statement {
+    sid    = "KMSGrantForHyperPod"
+    effect = "Allow"
+
+    actions = [
+      "kms:CreateGrant",
+      "kms:DescribeKey",
+    ]
+
+    resources = ["arn:aws:kms:*:*:key/*"]
+
+    condition {
+      test     = "StringLike"
+      variable = "kms:ViaService"
+      values   = ["sagemaker.*.amazonaws.com"]
+    }
+
+    condition {
+      test     = "Bool"
+      variable = "kms:GrantIsForAWSResource"
+      values   = ["true"]
+    }
+  }
+}
+
+resource "aws_iam_role" "hyperpod_karpenter" {
+  count = var.create_hyperpod_karpenter_role ? 1 : 0
+
+  name               = "SageMakerHyperPodKarpenterRole"
+  assume_role_policy = data.aws_iam_policy_document.hyperpod_karpenter_assume_role[0].json
+
+  tags = var.tags
+}
+
+resource "aws_iam_role_policy" "hyperpod_karpenter" {
+  count = var.create_hyperpod_karpenter_role ? 1 : 0
+
+  name   = "SageMakerHyperPodKarpenterPolicy"
+  role   = aws_iam_role.hyperpod_karpenter[0].id
+  policy = data.aws_iam_policy_document.hyperpod_karpenter[0].json
 }
 
 ###############################################################################

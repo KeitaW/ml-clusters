@@ -5,6 +5,9 @@ module "eks" {
   name               = var.cluster_name
   kubernetes_version = var.cluster_version
 
+  # Disable name_prefix to avoid 38-char limit with long cluster names
+  iam_role_use_name_prefix = false
+
   vpc_id     = var.vpc_id
   subnet_ids = var.private_subnet_ids
 
@@ -39,11 +42,13 @@ module "eks" {
   # System node group only - GPU nodes managed by Karpenter
   eks_managed_node_groups = {
     system = {
-      ami_type       = "AL2023_x86_64_STANDARD"
-      instance_types = ["m5.xlarge"]
-      min_size       = 2
-      max_size       = 4
-      desired_size   = 2
+      ami_type                 = "AL2023_x86_64_STANDARD"
+      instance_types           = ["m5.xlarge"]
+      min_size                 = 2
+      max_size                 = 4
+      desired_size             = 2
+      iam_role_use_name_prefix = false
+      use_name_prefix          = false
     }
   }
 
@@ -272,6 +277,11 @@ module "karpenter" {
   version = "~> 21.15"
 
   cluster_name = module.eks.cluster_name
+
+  # Disable name_prefix to avoid 38-char limit with long cluster names
+  iam_role_use_name_prefix      = false
+  iam_policy_use_name_prefix    = false
+  node_iam_role_use_name_prefix = false
 
   node_iam_role_additional_policies = {
     AmazonSSMManagedInstanceCore = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"

@@ -28,6 +28,11 @@ output "hyperpod_execution_role_arn" {
   value       = try(aws_iam_role.hyperpod_execution[0].arn, null)
 }
 
+output "hyperpod_karpenter_role_arn" {
+  description = "ARN of the HyperPod Karpenter autoscaling role"
+  value       = try(aws_iam_role.hyperpod_karpenter[0].arn, null)
+}
+
 output "s3_replication_role_arn" {
   description = "ARN of the S3 replication role"
   value       = try(aws_iam_role.s3_replication[0].arn, null)
