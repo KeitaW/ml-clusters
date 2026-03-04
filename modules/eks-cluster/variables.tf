@@ -54,6 +54,18 @@ variable "argocd_access_role_arns" {
   default     = []
 }
 
+variable "enable_cloudwatch_observability" {
+  description = "Install amazon-cloudwatch-observability EKS add-on for HyperPod dashboard"
+  type        = bool
+  default     = false
+}
+
+variable "enable_hyperpod_task_governance" {
+  description = "Install amazon-sagemaker-hyperpod-taskgovernance EKS add-on (Kueue)"
+  type        = bool
+  default     = false
+}
+
 variable "tags" {
   description = "Tags to apply to all resources"
   type        = map(string)

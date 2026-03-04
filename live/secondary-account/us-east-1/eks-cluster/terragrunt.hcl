@@ -19,4 +19,8 @@ inputs = {
 
   # ArgoCD access — disabled until ArgoCD-Spoke-Access role is created
   argocd_access_role_arns = []
+
+  # HyperPod observability and task governance
+  enable_cloudwatch_observability = true
+  enable_hyperpod_task_governance = true
 }
