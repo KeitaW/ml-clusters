@@ -385,14 +385,18 @@ resource "aws_iam_policy" "osmo" {
         Resource = var.osmo_s3_bucket_arns
       },
       {
+        Effect   = "Allow"
+        Action   = ["ecr:GetAuthorizationToken"]
+        Resource = "*"
+      },
+      {
         Effect = "Allow"
         Action = [
           "ecr:GetDownloadUrlForLayer",
           "ecr:BatchGetImage",
           "ecr:BatchCheckLayerAvailability",
-          "ecr:GetAuthorizationToken",
         ]
-        Resource = "*"
+        Resource = "arn:aws:ecr:*:*:repository/*"
       }
     ]
   })

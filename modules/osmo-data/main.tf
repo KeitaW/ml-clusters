@@ -2,37 +2,15 @@
 # Aurora PostgreSQL Serverless v2
 ################################################################################
 
-resource "random_password" "db" {
-  length  = 32
-  special = false
-}
-
-resource "aws_secretsmanager_secret" "db" {
-  name       = "osmo/database-credentials"
-  kms_key_id = var.kms_key_arn
-  tags       = var.tags
-}
-
-resource "aws_secretsmanager_secret_version" "db" {
-  secret_id = aws_secretsmanager_secret.db.id
-  secret_string = jsonencode({
-    username = var.db_master_username
-    password = random_password.db.result
-    dbname   = var.db_name
-    engine   = "postgres"
-    host     = aws_rds_cluster.osmo.endpoint
-    port     = aws_rds_cluster.osmo.port
-  })
-}
-
 resource "aws_db_subnet_group" "osmo" {
-  name       = "osmo-data"
+  name       = var.name_prefix
   subnet_ids = var.private_subnet_ids
   tags       = var.tags
 }
 
+# No egress rules — RDS only responds to inbound connections (stateful SG)
 resource "aws_security_group" "rds" {
-  name        = "osmo-rds"
+  name        = "${var.name_prefix}-rds"
   description = "Allow PostgreSQL access from EKS nodes"
   vpc_id      = var.vpc_id
 
@@ -48,13 +26,16 @@ resource "aws_security_group" "rds" {
 }
 
 resource "aws_rds_cluster" "osmo" {
-  cluster_identifier = "osmo-data"
+  cluster_identifier = var.name_prefix
   engine             = "aurora-postgresql"
   engine_mode        = "provisioned"
   engine_version     = "16.6"
   database_name      = var.db_name
   master_username    = var.db_master_username
-  master_password    = random_password.db.result
+
+  # AWS-managed password in Secrets Manager — keeps credentials out of Terraform state
+  manage_master_user_password   = true
+  master_user_secret_kms_key_id = var.kms_key_arn
 
   db_subnet_group_name   = aws_db_subnet_group.osmo.name
   vpc_security_group_ids = [aws_security_group.rds.id]
@@ -67,14 +48,17 @@ resource "aws_rds_cluster" "osmo" {
     max_capacity = var.db_max_capacity
   }
 
+  backup_retention_period = 7
+  deletion_protection     = true
+
   skip_final_snapshot       = false
-  final_snapshot_identifier = "osmo-data-final"
+  final_snapshot_identifier = "${var.name_prefix}-final"
 
   tags = var.tags
 }
 
 resource "aws_rds_cluster_instance" "writer" {
-  identifier         = "osmo-data-writer"
+  identifier         = "${var.name_prefix}-writer"
   cluster_identifier = aws_rds_cluster.osmo.id
   instance_class     = "db.serverless"
   engine             = aws_rds_cluster.osmo.engine
@@ -87,16 +71,17 @@ resource "aws_rds_cluster_instance" "writer" {
 # ElastiCache Serverless Redis
 ################################################################################
 
+# No egress rules — ElastiCache only responds to inbound connections (stateful SG)
 resource "aws_security_group" "redis" {
-  name        = "osmo-redis"
+  name        = "${var.name_prefix}-redis"
   description = "Allow Redis access from EKS nodes"
   vpc_id      = var.vpc_id
 
   ingress {
-    description     = "Redis from EKS nodes"
+    description     = "Redis primary + reader from EKS nodes"
     protocol        = "tcp"
     from_port       = 6379
-    to_port         = 6379
+    to_port         = 6380
     security_groups = [var.eks_node_security_group_id]
   }
 
@@ -105,7 +90,7 @@ resource "aws_security_group" "redis" {
 
 resource "aws_elasticache_serverless_cache" "osmo" {
   engine = "redis"
-  name   = "osmo-data"
+  name   = var.name_prefix
 
   major_engine_version = "7"
 

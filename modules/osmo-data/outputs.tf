@@ -14,13 +14,18 @@ output "db_port" {
 }
 
 output "db_secret_arn" {
-  description = "ARN of the Secrets Manager secret containing database credentials"
-  value       = aws_secretsmanager_secret.db.arn
+  description = "ARN of the AWS-managed Secrets Manager secret containing database credentials"
+  value       = aws_rds_cluster.osmo.master_user_secret[0].secret_arn
 }
 
 output "redis_endpoint" {
   description = "ElastiCache Serverless Redis endpoint"
   value       = aws_elasticache_serverless_cache.osmo.endpoint[0].address
+}
+
+output "redis_reader_endpoint" {
+  description = "ElastiCache Serverless Redis reader endpoint"
+  value       = aws_elasticache_serverless_cache.osmo.reader_endpoint[0].address
 }
 
 output "redis_port" {

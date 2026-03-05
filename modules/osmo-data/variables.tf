@@ -1,3 +1,9 @@
+variable "name_prefix" {
+  description = "Prefix for all resource names (cluster identifier, SGs, subnet group, etc.)"
+  type        = string
+  default     = "osmo-data"
+}
+
 variable "vpc_id" {
   description = "VPC ID where data services are deployed"
   type        = string

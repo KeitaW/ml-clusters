@@ -1,4 +1,7 @@
 ---
+# Subnet discovery uses namespaced tag key (karpenter.sh/discovery/{cluster}) for multi-cluster
+# VPC sharing. Security group uses standard tag (karpenter.sh/discovery: {cluster}) because the
+# node SG is per-cluster, tagged by the EKS module's node_security_group_tags.
 apiVersion: karpenter.k8s.aws/v1
 kind: EC2NodeClass
 metadata:
