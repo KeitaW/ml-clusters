@@ -17,7 +17,8 @@ dependency "iam" {
   mock_outputs = {
     argocd_spoke_access_role_arn = "arn:aws:iam::159553542841:role/mock"
   }
-  mock_outputs_allowed_terraform_commands = ["validate", "plan"]
+  mock_outputs_allowed_terraform_commands      = ["validate", "plan"]
+  mock_outputs_merge_strategy_with_state = "shallow"
 }
 
 dependency "s3_replica" {

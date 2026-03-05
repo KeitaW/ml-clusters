@@ -69,6 +69,7 @@ dependency "eks_secondary_east1" {
     ray_role_arn                       = ""
   }
   mock_outputs_allowed_terraform_commands = ["validate", "plan", "apply", "destroy"]
+  mock_outputs_merge_strategy_with_state  = "shallow"
 }
 
 dependency "monitoring_secondary_east1" {
