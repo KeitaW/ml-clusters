@@ -20,7 +20,8 @@ dependency "osmo_eks" {
   mock_outputs = {
     node_security_group_id = "sg-mock"
   }
-  mock_outputs_allowed_terraform_commands = ["validate", "plan"]
+  mock_outputs_allowed_terraform_commands      = ["validate", "plan", "apply", "destroy"]
+  mock_outputs_merge_strategy_with_state = "shallow"
 }
 
 inputs = {
