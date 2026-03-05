@@ -239,7 +239,7 @@ resource "aws_grafana_workspace_service_account" "terraform" {
 resource "aws_grafana_workspace_service_account_token" "terraform" {
   count              = var.enable_grafana ? 1 : 0
   name               = "terraform-token"
-  service_account_id = aws_grafana_workspace_service_account.terraform[0].id
+  service_account_id = aws_grafana_workspace_service_account.terraform[0].service_account_id
   seconds_to_live    = 2592000 # 30 days (maximum); rotate via terraform taint
   workspace_id       = aws_grafana_workspace.main[0].id
 }
