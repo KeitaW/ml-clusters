@@ -165,6 +165,11 @@ projects:
     workflow: terragrunt
     execution_order_group: 5
 
+  - name: secondary-us-east-1-grafana-config
+    dir: live/secondary-account/us-east-1/grafana-config
+    workflow: terragrunt
+    execution_order_group: 5
+
 workflows:
   terragrunt:
     plan:
