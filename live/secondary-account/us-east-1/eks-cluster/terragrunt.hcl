@@ -62,5 +62,5 @@ inputs = {
 
   # HyperPod observability and task governance
   enable_cloudwatch_observability = true
-  enable_hyperpod_task_governance = true
+  enable_hyperpod_task_governance = false
 }
