@@ -1,8 +1,3 @@
-variable "grafana_endpoint" {
-  description = "Grafana workspace endpoint (without https://)"
-  type        = string
-}
-
 variable "grafana_api_key" {
   description = "Grafana API key for authentication"
   type        = string

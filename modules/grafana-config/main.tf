@@ -32,9 +32,11 @@ resource "grafana_folder" "folders" {
 resource "grafana_dashboard" "dashboards" {
   for_each = fileset("${path.module}/dashboards", "**/*.json")
 
-  config_json = templatefile("${path.module}/dashboards/${each.value}", {
-    prometheus_uid = grafana_data_source.prometheus.uid
-  })
+  config_json = replace(
+    file("${path.module}/dashboards/${each.value}"),
+    "__PROMETHEUS_UID__",
+    grafana_data_source.prometheus.uid
+  )
 
   folder = grafana_folder.folders[
     split("/", each.value)[0]

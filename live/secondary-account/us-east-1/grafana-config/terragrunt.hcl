@@ -29,7 +29,6 @@ generate "grafana_provider" {
 }
 
 inputs = {
-  grafana_endpoint       = dependency.monitoring.outputs.grafana_workspace_endpoint
   grafana_api_key        = dependency.monitoring.outputs.grafana_service_account_token
   amp_workspace_endpoint = dependency.monitoring.outputs.amp_workspace_endpoint
   account_name           = "secondary"
