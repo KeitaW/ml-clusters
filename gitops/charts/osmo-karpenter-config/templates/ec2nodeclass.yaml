@@ -7,7 +7,7 @@ kind: EC2NodeClass
 metadata:
   name: osmo-gpu
 spec:
-  instanceProfile: {{ .Values.instanceProfileName }}
+  role: {{ .Values.nodeRoleName }}
   amiSelectorTerms:
     - alias: al2023@latest
   subnetSelectorTerms:
@@ -34,7 +34,7 @@ kind: EC2NodeClass
 metadata:
   name: osmo-cpu
 spec:
-  instanceProfile: {{ .Values.instanceProfileName }}
+  role: {{ .Values.nodeRoleName }}
   amiSelectorTerms:
     - alias: al2023@latest
   subnetSelectorTerms:
@@ -57,7 +57,7 @@ kind: EC2NodeClass
 metadata:
   name: osmo-cpu-system
 spec:
-  instanceProfile: {{ .Values.instanceProfileName }}
+  role: {{ .Values.nodeRoleName }}
   amiSelectorTerms:
     - alias: al2023@latest
   subnetSelectorTerms:
@@ -72,3 +72,27 @@ spec:
         volumeSize: 100Gi
         volumeType: gp3
         encrypted: true
+---
+apiVersion: karpenter.k8s.aws/v1
+kind: EC2NodeClass
+metadata:
+  name: osmo-rendering
+spec:
+  role: {{ .Values.nodeRoleName }}
+  amiSelectorTerms:
+    - alias: al2023@latest
+  subnetSelectorTerms:
+    - tags:
+        karpenter.sh/discovery/{{ .Values.clusterName }}: "true"
+  securityGroupSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: {{ .Values.clusterName }}
+  blockDeviceMappings:
+    - deviceName: /dev/xvda
+      ebs:
+        volumeSize: 300Gi
+        volumeType: gp3
+        iops: 6000
+        throughput: 400
+        encrypted: true
+  instanceStorePolicy: RAID0
