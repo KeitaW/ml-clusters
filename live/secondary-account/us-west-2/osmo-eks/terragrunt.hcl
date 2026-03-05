@@ -11,16 +11,6 @@ dependency "networking" {
   config_path = "../networking"
 }
 
-dependency "iam" {
-  config_path = "../iam"
-
-  mock_outputs = {
-    argocd_spoke_access_role_arn = "arn:aws:iam::159553542841:role/mock"
-  }
-  mock_outputs_allowed_terraform_commands = ["validate", "plan"]
-  mock_outputs_merge_strategy_with_state  = "shallow"
-}
-
 dependency "s3_replica" {
   config_path = "../s3-data-replica"
 
@@ -46,8 +36,8 @@ inputs = {
   private_subnet_ids    = dependency.networking.outputs.private_subnet_ids
   efa_security_group_id = dependency.networking.outputs.efa_security_group_id
 
-  # ArgoCD access — cross-account spoke role for hub management
-  argocd_access_role_arns = [dependency.iam.outputs.argocd_spoke_access_role_arn]
+  # ArgoCD access — spoke role is account-global, created by us-east-1 IAM stack
+  argocd_access_role_arns = ["arn:aws:iam::159553542841:role/ArgoCD-Spoke-Access"]
 
   # IAM role names — explicit names, no name_prefix
   cluster_iam_role_use_name_prefix = false
