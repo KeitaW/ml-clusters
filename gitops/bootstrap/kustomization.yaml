@@ -4,6 +4,7 @@ kind: Kustomization
 resources:
   - karpenter.yaml
   - karpenter-config.yaml
+  - osmo-karpenter-config.yaml
   - nvidia-device-plugin.yaml
   - efa-device-plugin.yaml
   - aws-lb-controller.yaml

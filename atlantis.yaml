@@ -97,6 +97,11 @@ projects:
     workflow: terragrunt
     execution_order_group: 2
 
+  - name: secondary-us-west-2-monitoring
+    dir: live/secondary-account/us-west-2/monitoring
+    workflow: terragrunt
+    execution_order_group: 2
+
   # --- Execution Order Group 3: EKS Clusters ---
   - name: main-us-east-1-eks-cluster
     dir: live/main-account/us-east-1/eks-cluster
@@ -115,6 +120,11 @@ projects:
 
   - name: secondary-us-east-1-eks-cluster
     dir: live/secondary-account/us-east-1/eks-cluster
+    workflow: terragrunt
+    execution_order_group: 3
+
+  - name: secondary-us-west-2-osmo-eks
+    dir: live/secondary-account/us-west-2/osmo-eks
     workflow: terragrunt
     execution_order_group: 3
 
@@ -146,6 +156,11 @@ projects:
 
   - name: main-us-east-1-midway-auth
     dir: live/main-account/us-east-1/midway-auth
+    workflow: terragrunt
+    execution_order_group: 4
+
+  - name: secondary-us-west-2-osmo-data
+    dir: live/secondary-account/us-west-2/osmo-data
     workflow: terragrunt
     execution_order_group: 4
 

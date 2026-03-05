@@ -9,4 +9,9 @@ include "envcommon" {
 
 inputs = {
   is_production = true
+
+  # Multi-cluster Karpenter discovery tags for OSMO cluster
+  additional_private_subnet_tags = {
+    "karpenter.sh/discovery/osmo-secondary-us-west-2" = "true"
+  }
 }
