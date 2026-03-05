@@ -226,6 +226,25 @@ resource "aws_iam_role_policy" "grafana_sns_publish" {
 }
 
 ################################################################################
+# Grafana Service Account + Token (for Grafana provider API access)
+################################################################################
+
+resource "aws_grafana_workspace_service_account" "terraform" {
+  count        = var.enable_grafana ? 1 : 0
+  name         = "terraform"
+  grafana_role = "ADMIN"
+  workspace_id = aws_grafana_workspace.main[0].id
+}
+
+resource "aws_grafana_workspace_service_account_token" "terraform" {
+  count              = var.enable_grafana ? 1 : 0
+  name               = "terraform-token"
+  service_account_id = aws_grafana_workspace_service_account.terraform[0].id
+  seconds_to_live    = 2592000 # 30 days (maximum); rotate via terraform taint
+  workspace_id       = aws_grafana_workspace.main[0].id
+}
+
+################################################################################
 # Grafana Role Associations — conditional on non-empty ID lists
 ################################################################################
 

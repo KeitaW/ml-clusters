@@ -37,3 +37,9 @@ output "grafana_workspace_arn" {
   description = "ARN of the Amazon Managed Grafana workspace"
   value       = var.enable_grafana ? aws_grafana_workspace.main[0].arn : ""
 }
+
+output "grafana_service_account_token" {
+  description = "API key for the Grafana Terraform service account"
+  value       = var.enable_grafana ? aws_grafana_workspace_service_account_token.terraform[0].key : ""
+  sensitive   = true
+}
