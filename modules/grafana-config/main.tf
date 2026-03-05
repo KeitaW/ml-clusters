@@ -3,14 +3,13 @@
 ################################################################################
 
 resource "grafana_data_source" "prometheus" {
-  type = "prometheus"
+  type = "grafana-amazonprometheus-datasource"
   name = "AMP-${var.account_name}-${var.aws_region}"
 
   json_data_encoded = jsonencode({
-    httpMethod    = "POST"
-    sigV4Auth     = true
-    sigV4AuthType = "workspace-iam-role"
-    sigV4Region   = var.aws_region
+    httpMethod = "POST"
+    sigV4Auth  = true
+    sigV4Region = var.aws_region
   })
 
   url = var.amp_workspace_endpoint
