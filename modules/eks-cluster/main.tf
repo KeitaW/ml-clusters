@@ -280,6 +280,63 @@ resource "aws_iam_role_policy_attachment" "adot" {
   policy_arn = aws_iam_policy.adot[0].arn
 }
 
+# Ray cluster IRSA role — S3 access for checkpoints and data
+data "aws_iam_policy_document" "ray_trust" {
+  count = length(var.ray_s3_bucket_arns) > 0 ? 1 : 0
+
+  statement {
+    actions = ["sts:AssumeRoleWithWebIdentity"]
+    principals {
+      type        = "Federated"
+      identifiers = [module.eks.oidc_provider_arn]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "${replace(module.eks.oidc_provider, "https://", "")}:sub"
+      values   = ["system:serviceaccount:kuberay:ray-cluster"]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "${replace(module.eks.oidc_provider, "https://", "")}:aud"
+      values   = ["sts.amazonaws.com"]
+    }
+  }
+}
+
+resource "aws_iam_role" "ray" {
+  count              = length(var.ray_s3_bucket_arns) > 0 ? 1 : 0
+  name               = "RayCluster-${var.cluster_name}"
+  assume_role_policy = data.aws_iam_policy_document.ray_trust[0].json
+  tags               = var.tags
+}
+
+resource "aws_iam_policy" "ray" {
+  count = length(var.ray_s3_bucket_arns) > 0 ? 1 : 0
+  name  = "RayClusterPolicy-${var.cluster_name}"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"]
+        Resource = [for arn in var.ray_s3_bucket_arns : "${arn}/*"]
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["s3:ListBucket"]
+        Resource = var.ray_s3_bucket_arns
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "ray" {
+  count      = length(var.ray_s3_bucket_arns) > 0 ? 1 : 0
+  role       = aws_iam_role.ray[0].name
+  policy_arn = aws_iam_policy.ray[0].arn
+}
+
 # ArgoCD hub access entries
 resource "aws_eks_access_entry" "argocd" {
   for_each = toset(var.argocd_access_role_arns)

@@ -1,31 +1,24 @@
-# Configure providers using cluster details
+# Configure providers using cluster auth token (no aws CLI dependency)
 locals {
-  eks_token_args         = var.assume_role_arn != "" ? ["eks", "get-token", "--cluster-name", var.cluster_name, "--role-arn", var.assume_role_arn] : ["eks", "get-token", "--cluster-name", var.cluster_name]
   spoke_access_role_arns = compact([for k, v in var.spoke_clusters : v.role_arn if v.role_arn != null])
+}
+
+data "aws_eks_cluster_auth" "hub" {
+  name = var.cluster_name
 }
 
 provider "helm" {
   kubernetes = {
     host                   = var.cluster_endpoint
     cluster_ca_certificate = base64decode(var.cluster_ca_certificate)
-
-    exec = {
-      api_version = "client.authentication.k8s.io/v1beta1"
-      command     = "aws"
-      args        = local.eks_token_args
-    }
+    token                  = data.aws_eks_cluster_auth.hub.token
   }
 }
 
 provider "kubernetes" {
   host                   = var.cluster_endpoint
   cluster_ca_certificate = base64decode(var.cluster_ca_certificate)
-
-  exec {
-    api_version = "client.authentication.k8s.io/v1beta1"
-    command     = "aws"
-    args        = local.eks_token_args
-  }
+  token                  = data.aws_eks_cluster_auth.hub.token
 }
 
 ###############################################################################

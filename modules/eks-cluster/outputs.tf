@@ -68,6 +68,11 @@ output "adot_role_arn" {
   value       = var.amp_workspace_arn != "" ? aws_iam_role.adot[0].arn : ""
 }
 
+output "ray_role_arn" {
+  description = "ARN of the Ray cluster IRSA role"
+  value       = try(aws_iam_role.ray[0].arn, "")
+}
+
 output "aws_region" {
   description = "AWS region of the cluster"
   value       = var.aws_region

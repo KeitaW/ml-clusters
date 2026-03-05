@@ -72,6 +72,12 @@ variable "karpenter_node_role_name" {
   default     = ""
 }
 
+variable "ray_s3_bucket_arns" {
+  description = "S3 bucket ARNs for Ray cluster access (checkpoints, data). Leave empty to skip Ray IRSA creation."
+  type        = list(string)
+  default     = []
+}
+
 variable "enable_cloudwatch_observability" {
   description = "Install amazon-cloudwatch-observability EKS add-on for HyperPod dashboard"
   type        = bool
