@@ -10,3 +10,5 @@ resources:
   - external-dns.yaml
   - adot-collector.yaml
   - dcgm-exporter.yaml
+  - kuberay-operator.yaml
+  - ray-cluster.yaml

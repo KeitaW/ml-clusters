@@ -1,0 +1,43 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: kuberay-operator
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions:
+    - missingkey=error
+  generators:
+    - clusters:
+        selector:
+          matchLabels:
+            enable_kuberay: "true"
+  template:
+    metadata:
+      name: 'kuberay-operator-{{.name}}'
+    spec:
+      project: default
+      source:
+        repoURL: https://ray-project.github.io/kuberay-helm
+        chart: kuberay-operator
+        targetRevision: v1.3.0
+        helm:
+          valuesObject:
+            replicaCount: 1
+            resources:
+              requests:
+                cpu: 100m
+                memory: 256Mi
+              limits:
+                cpu: 500m
+                memory: 512Mi
+      destination:
+        server: '{{.server}}'
+        namespace: kuberay
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true

@@ -18,7 +18,7 @@ inputs = {
   # Trust the main account for cross-account role assumption
   terraform_execution_trust_account_ids = ["483026362307"]
 
-  # ArgoCD cross-account access — disabled until ArgoCD-Hub-Controller role exists in main account
-  create_argocd_spoke_role = false
+  # ArgoCD cross-account access
+  create_argocd_spoke_role = true
   argocd_hub_role_arn      = "arn:aws:iam::483026362307:role/ArgoCD-Hub-Controller"
 }

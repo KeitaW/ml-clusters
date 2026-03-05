@@ -1,0 +1,46 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: ray-cluster
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions:
+    - missingkey=error
+  generators:
+    - clusters:
+        selector:
+          matchLabels:
+            enable_kuberay: "true"
+  template:
+    metadata:
+      name: 'ray-cluster-{{.name}}'
+    spec:
+      project: default
+      source:
+        repoURL: https://github.com/KeitaW/ml-clusters.git
+        targetRevision: main
+        path: gitops/charts/ray-cluster
+        helm:
+          valuesObject:
+            clusterName: '{{index .metadata.annotations "cluster_name"}}'
+            rayRoleArn: '{{index .metadata.annotations "ray_role_arn"}}'
+            gpuWorkerGroup:
+              replicas: 0
+      destination:
+        server: '{{.server}}'
+        namespace: kuberay
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - SkipDryRunOnMissingResource=true
+          - ServerSideApply=true
+        retry:
+          limit: 10
+          backoff:
+            duration: 30s
+            factor: 2
+            maxDuration: 5m
