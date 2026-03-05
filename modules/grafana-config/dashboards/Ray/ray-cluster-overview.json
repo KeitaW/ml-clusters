@@ -13,7 +13,7 @@
       "title": "Active Nodes",
       "type": "stat",
       "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
-      "datasource": { "type": "prometheus", "uid": "__PROMETHEUS_UID__" },
+      "datasource": { "type": "grafana-amazonprometheus-datasource", "uid": "__PROMETHEUS_UID__" },
       "targets": [
         {
           "expr": "ray_cluster_active_nodes",
@@ -35,7 +35,7 @@
       "title": "Running Tasks",
       "type": "stat",
       "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
-      "datasource": { "type": "prometheus", "uid": "__PROMETHEUS_UID__" },
+      "datasource": { "type": "grafana-amazonprometheus-datasource", "uid": "__PROMETHEUS_UID__" },
       "targets": [
         {
           "expr": "sum(ray_tasks{State=\"RUNNING\"})",
@@ -47,7 +47,7 @@
       "title": "Running Actors",
       "type": "stat",
       "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
-      "datasource": { "type": "prometheus", "uid": "__PROMETHEUS_UID__" },
+      "datasource": { "type": "grafana-amazonprometheus-datasource", "uid": "__PROMETHEUS_UID__" },
       "targets": [
         {
           "expr": "sum(ray_actors{State=\"ALIVE\"})",
@@ -59,7 +59,7 @@
       "title": "Pending Tasks",
       "type": "stat",
       "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
-      "datasource": { "type": "prometheus", "uid": "__PROMETHEUS_UID__" },
+      "datasource": { "type": "grafana-amazonprometheus-datasource", "uid": "__PROMETHEUS_UID__" },
       "targets": [
         {
           "expr": "sum(ray_tasks{State=\"PENDING_NODE_ASSIGNMENT\"}) or vector(0)",
@@ -82,7 +82,7 @@
       "title": "CPU Utilization per Node",
       "type": "timeseries",
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
-      "datasource": { "type": "prometheus", "uid": "__PROMETHEUS_UID__" },
+      "datasource": { "type": "grafana-amazonprometheus-datasource", "uid": "__PROMETHEUS_UID__" },
       "targets": [
         {
           "expr": "ray_node_cpu_utilization",
@@ -101,7 +101,7 @@
       "title": "Memory Utilization per Node",
       "type": "timeseries",
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
-      "datasource": { "type": "prometheus", "uid": "__PROMETHEUS_UID__" },
+      "datasource": { "type": "grafana-amazonprometheus-datasource", "uid": "__PROMETHEUS_UID__" },
       "targets": [
         {
           "expr": "ray_node_mem_used / ray_node_mem_total * 100",
@@ -120,7 +120,7 @@
       "title": "GPU Utilization (DCGM)",
       "type": "timeseries",
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
-      "datasource": { "type": "prometheus", "uid": "__PROMETHEUS_UID__" },
+      "datasource": { "type": "grafana-amazonprometheus-datasource", "uid": "__PROMETHEUS_UID__" },
       "targets": [
         {
           "expr": "DCGM_FI_DEV_GPU_UTIL",
@@ -139,7 +139,7 @@
       "title": "GPU Memory Used (DCGM)",
       "type": "timeseries",
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
-      "datasource": { "type": "prometheus", "uid": "__PROMETHEUS_UID__" },
+      "datasource": { "type": "grafana-amazonprometheus-datasource", "uid": "__PROMETHEUS_UID__" },
       "targets": [
         {
           "expr": "DCGM_FI_DEV_FB_USED",
@@ -156,7 +156,7 @@
       "title": "Object Store Memory",
       "type": "timeseries",
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 20 },
-      "datasource": { "type": "prometheus", "uid": "__PROMETHEUS_UID__" },
+      "datasource": { "type": "grafana-amazonprometheus-datasource", "uid": "__PROMETHEUS_UID__" },
       "targets": [
         {
           "expr": "ray_object_store_memory",
