@@ -62,12 +62,16 @@ spec:
             ports:
               - containerPort: 6379
                 name: gcs-server
+                protocol: TCP
               - containerPort: 8265
                 name: dashboard
+                protocol: TCP
               - containerPort: 10001
                 name: client
+                protocol: TCP
               - containerPort: 8080
                 name: metrics
+                protocol: TCP
             env:
               - name: RAY_GRAFANA_IFRAME_HOST
                 value: ""
