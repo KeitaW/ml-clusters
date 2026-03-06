@@ -21,6 +21,12 @@ variable "api_version" {
   default     = "3.12.0"
 }
 
+variable "api_parameters" {
+  description = "Map of parameters for the PCluster API CloudFormation template"
+  type        = map(any)
+  default     = {}
+}
+
 variable "cluster_configs" {
   description = "Map of cluster configurations"
   type = map(object({

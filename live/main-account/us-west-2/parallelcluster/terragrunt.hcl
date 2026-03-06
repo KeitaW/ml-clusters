@@ -15,24 +15,28 @@ dependency "shared_storage" {
   config_path = "../shared-storage"
 }
 
-# Generate parallelcluster provider (API stack bootstrapped manually)
+# Generate parallelcluster provider — Atlantis (TerraformExecutionRole) calls the API
 generate "pcluster_provider" {
   path      = "pcluster_provider.tf"
   if_exists = "overwrite_terragrunt"
   contents  = <<-EOF
     provider "aws-parallelcluster" {
-      region     = "us-west-2"
+      region         = "us-west-2"
       api_stack_name = "pcluster-api-us-west-2"
-      role_arn   = "arn:aws:iam::483026362307:role/TerraformExecutionRole"
+      role_arn       = "arn:aws:iam::483026362307:role/TerraformExecutionRole"
     }
   EOF
 }
 
 inputs = {
   region              = "us-west-2"
-  deploy_pcluster_api = false
+  deploy_pcluster_api = true
   api_stack_name      = "pcluster-api-us-west-2"
   api_version         = "3.13.1"
+
+  api_parameters = {
+    EnableIamAdminAccess = "true"
+  }
 
   cluster_configs = {
     e2e-pr1003 = {
