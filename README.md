@@ -47,7 +47,7 @@ Unified, multi-account, multi-region infrastructure management for AWS ML worklo
 
 ```
 ml-clusters/
-├── modules/                  # Terraform modules (12)
+├── modules/                  # Terraform modules (14)
 │   ├── networking/           #   VPC, subnets, NAT, EFA SG, placement groups, VPC endpoints
 │   ├── iam/                  #   KMS, TerraformExecutionRole, cross-account access
 │   ├── s3-data-bucket/       #   Central ML data bucket with versioning + encryption
@@ -59,7 +59,9 @@ ml-clusters/
 │   ├── midway-auth/          #   Cognito + OIDC federation + Route53 + ACM
 │   ├── parallelcluster/      #   ParallelCluster API + Slurm cluster
 │   ├── monitoring/           #   AMP + Alertmanager + SNS + Prometheus rules
-│   └── hyperpod/             #   SageMaker HyperPod (Slurm/EKS orchestrator)
+│   ├── hyperpod/             #   SageMaker HyperPod (Slurm/EKS orchestrator)
+│   ├── grafana-config/       #   Grafana dashboards + AMP data source
+│   └── osmo-data/            #   Aurora PostgreSQL + ElastiCache Redis for OSMO
 ├── live/                     # Terragrunt environment configs
 │   ├── terragrunt.hcl        #   Root config (S3 backend, provider generation)
 │   ├── _envcommon/           #   Shared module references
