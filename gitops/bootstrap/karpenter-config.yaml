@@ -12,6 +12,9 @@ spec:
         selector:
           matchLabels:
             enable_karpenter: "true"
+          matchExpressions:
+            - key: enable_osmo_karpenter
+              operator: DoesNotExist
   template:
     metadata:
       name: 'karpenter-config-{{.name}}'

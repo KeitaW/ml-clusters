@@ -24,7 +24,7 @@ spec:
         helm:
           valuesObject:
             clusterName: '{{index .metadata.annotations "cluster_name"}}'
-            instanceProfileName: '{{index .metadata.annotations "karpenter_instance_profile"}}'
+            nodeRoleName: '{{index .metadata.annotations "karpenter_node_role_name"}}'
       destination:
         server: '{{.server}}'
         namespace: kube-system
