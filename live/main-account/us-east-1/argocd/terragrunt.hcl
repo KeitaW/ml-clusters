@@ -94,9 +94,23 @@ dependency "eks_osmo" {
     karpenter_queue_name               = "mock-queue"
     karpenter_instance_profile_name    = ""
     adot_role_arn                      = ""
+    osmo_role_arn                      = "arn:aws:iam::159553542841:role/mock-osmo"
   }
   mock_outputs_allowed_terraform_commands = ["validate", "plan", "apply", "destroy"]
   mock_outputs_merge_strategy_with_state  = "shallow"
+}
+
+dependency "osmo_data" {
+  config_path = "../../../secondary-account/us-west-2/osmo-data"
+
+  mock_outputs = {
+    db_endpoint    = "mock.cluster.us-west-2.rds.amazonaws.com"
+    db_port        = 5432
+    db_secret_arn  = "arn:aws:secretsmanager:us-west-2:159553542841:secret:mock"
+    redis_endpoint = "mock.serverless.usw2.cache.amazonaws.com"
+    redis_port     = 6379
+  }
+  mock_outputs_allowed_terraform_commands = ["validate", "plan", "apply", "destroy"]
 }
 
 dependency "monitoring_secondary_west2" {
@@ -224,12 +238,21 @@ inputs = {
         karpenter_node_role_arn    = dependency.eks_osmo.outputs.karpenter_node_role_arn
         karpenter_queue_name       = dependency.eks_osmo.outputs.karpenter_queue_name
         adot_role_arn              = dependency.eks_osmo.outputs.adot_role_arn
+        osmo_role_arn              = dependency.eks_osmo.outputs.osmo_role_arn
+        osmo_db_endpoint           = dependency.osmo_data.outputs.db_endpoint
+        osmo_db_port               = tostring(dependency.osmo_data.outputs.db_port)
+        osmo_db_secret_arn         = dependency.osmo_data.outputs.db_secret_arn
+        osmo_redis_endpoint        = dependency.osmo_data.outputs.redis_endpoint
+        osmo_redis_port            = tostring(dependency.osmo_data.outputs.redis_port)
         amp_region                 = "us-west-2"
         amp_remote_write_endpoint  = dependency.monitoring_secondary_west2.outputs.amp_remote_write_endpoint
         enable_karpenter           = "true"
         enable_osmo_karpenter      = "true"
         enable_external_dns        = "false"
         enable_adot                = "true"
+        enable_gpu_operator        = "true"
+        enable_kai_scheduler       = "true"
+        enable_osmo                = "true"
       }
     }
   }

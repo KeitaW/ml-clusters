@@ -84,6 +84,12 @@ variable "osmo_s3_bucket_arns" {
   default     = []
 }
 
+variable "osmo_db_secret_arns" {
+  description = "Secrets Manager ARNs for OSMO DB credentials"
+  type        = list(string)
+  default     = []
+}
+
 variable "enable_cloudwatch_observability" {
   description = "Install amazon-cloudwatch-observability EKS add-on for HyperPod dashboard"
   type        = bool

@@ -1,0 +1,45 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: gpu-operator
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions:
+    - missingkey=error
+  generators:
+    - clusters:
+        selector:
+          matchLabels:
+            enable_gpu_operator: "true"
+  template:
+    metadata:
+      name: 'gpu-operator-{{.name}}'
+    spec:
+      project: default
+      source:
+        repoURL: https://helm.ngc.nvidia.com/nvidia
+        chart: gpu-operator
+        targetRevision: v25.10.1
+        helm:
+          valuesObject:
+            driver:
+              enabled: false
+            toolkit:
+              enabled: false
+            dcgmExporter:
+              enabled: true
+            nfd:
+              enabled: true
+            migManager:
+              enabled: false
+      destination:
+        server: '{{.server}}'
+        namespace: gpu-operator
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true

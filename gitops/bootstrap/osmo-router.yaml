@@ -1,0 +1,46 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: osmo-router
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions:
+    - missingkey=error
+  generators:
+    - clusters:
+        selector:
+          matchLabels:
+            enable_osmo: "true"
+  template:
+    metadata:
+      name: 'osmo-router-{{.name}}'
+    spec:
+      project: default
+      source:
+        repoURL: https://github.com/NVIDIA/OSMO.git
+        targetRevision: v6.2-rc6
+        path: deployments/charts/router
+        helm:
+          valuesObject:
+            serviceAccount:
+              create: true
+              name: osmo-router
+              annotations:
+                eks.amazonaws.com/role-arn: '{{index .metadata.annotations "osmo_role_arn"}}'
+            envoy:
+              enabled: false
+            oauth2Proxy:
+              enabled: false
+            authz:
+              enabled: false
+      destination:
+        server: '{{.server}}'
+        namespace: osmo-system
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true

@@ -1,0 +1,40 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: osmo-web-ui
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions:
+    - missingkey=error
+  generators:
+    - clusters:
+        selector:
+          matchLabels:
+            enable_osmo: "true"
+  template:
+    metadata:
+      name: 'osmo-web-ui-{{.name}}'
+    spec:
+      project: default
+      source:
+        repoURL: https://github.com/NVIDIA/OSMO.git
+        targetRevision: v6.2-rc6
+        path: deployments/charts/web-ui
+        helm:
+          valuesObject:
+            serviceAccount:
+              create: true
+              name: osmo-web-ui
+            config:
+              serviceUrl: http://osmo-service.osmo-system.svc.cluster.local:8080
+      destination:
+        server: '{{.server}}'
+        namespace: osmo-system
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true

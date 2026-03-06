@@ -162,7 +162,7 @@ resource "kubernetes_secret_v1" "hub_cluster" {
       {
         "argocd.argoproj.io/secret-type" = "cluster"
       },
-      { for k, v in var.hub_annotations : k => v if contains(["enable_karpenter", "enable_external_dns", "enable_adot", "enable_kuberay", "enable_osmo_karpenter"], k) }
+      { for k, v in var.hub_annotations : k => v if contains(["enable_karpenter", "enable_external_dns", "enable_adot", "enable_kuberay", "enable_osmo_karpenter", "enable_gpu_operator", "enable_kai_scheduler", "enable_osmo"], k) }
     )
     annotations = merge(
       {
@@ -195,7 +195,7 @@ resource "kubernetes_secret_v1" "spoke_clusters" {
       {
         "argocd.argoproj.io/secret-type" = "cluster"
       },
-      { for k, v in each.value.annotations : k => v if contains(["enable_karpenter", "enable_external_dns", "enable_adot", "enable_kuberay", "enable_osmo_karpenter"], k) }
+      { for k, v in each.value.annotations : k => v if contains(["enable_karpenter", "enable_external_dns", "enable_adot", "enable_kuberay", "enable_osmo_karpenter", "enable_gpu_operator", "enable_kai_scheduler", "enable_osmo"], k) }
     )
     annotations = merge(
       {

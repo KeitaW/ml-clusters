@@ -12,6 +12,9 @@ spec:
         selector:
           matchLabels:
             argocd.argoproj.io/secret-type: cluster
+          matchExpressions:
+            - key: enable_gpu_operator
+              operator: DoesNotExist
   template:
     metadata:
       name: 'nvidia-device-plugin-{{.name}}'
