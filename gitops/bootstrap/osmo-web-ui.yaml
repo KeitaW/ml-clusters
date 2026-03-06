@@ -28,6 +28,9 @@ spec:
               name: osmo-web-ui
             config:
               serviceUrl: http://osmo-service.osmo-system.svc.cluster.local:8080
+            ui:
+              ingress:
+                enabled: false
       destination:
         server: '{{.server}}'
         namespace: osmo-system
