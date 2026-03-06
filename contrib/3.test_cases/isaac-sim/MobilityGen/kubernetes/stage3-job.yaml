@@ -1,0 +1,59 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: amr-stage3-trajectory-gen
+  namespace: ${NAMESPACE}
+spec:
+  backoffLimit: 1
+  activeDeadlineSeconds: 3600
+  template:
+    spec:
+      restartPolicy: Never
+      serviceAccountName: amr-pipeline-sa
+      imagePullSecrets:
+        - name: ngc-secret
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
+      nodeSelector:
+        karpenter.k8s.aws/instance-category: "g"
+      containers:
+        - name: trajectory-gen
+          image: ${ISAAC_SIM_IMAGE_URI}
+          env:
+            - name: ACCEPT_EULA
+              value: "Y"
+            - name: PRIVACY_CONSENT
+              value: "Y"
+          command:
+            - /isaac-sim/python.sh
+            - /isaac-sim/scripts/stage3_trajectory_gen.py
+          args:
+            - "--s3_bucket"
+            - "${S3_BUCKET}"
+            - "--run_id"
+            - "${RUN_ID}"
+            - "--num_trajectories"
+            - "${NUM_TRAJECTORIES:-10}"
+            - "--headless"
+          resources:
+            requests:
+              nvidia.com/gpu: 1
+              cpu: "16"
+              memory: "32Gi"
+            limits:
+              nvidia.com/gpu: 1
+          volumeMounts:
+            - name: cache
+              mountPath: /isaac-sim/.cache
+            - name: shm
+              mountPath: /dev/shm
+      volumes:
+        - name: cache
+          emptyDir:
+            sizeLimit: 50Gi
+        - name: shm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 16Gi

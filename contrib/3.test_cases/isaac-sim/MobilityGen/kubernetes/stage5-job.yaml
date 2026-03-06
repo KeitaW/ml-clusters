@@ -1,0 +1,38 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: amr-stage5-augment
+  namespace: ${NAMESPACE}
+spec:
+  backoffLimit: 1
+  activeDeadlineSeconds: 7200
+  template:
+    spec:
+      restartPolicy: Never
+      serviceAccountName: amr-pipeline-sa
+      imagePullSecrets:
+        - name: ngc-secret
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
+      nodeSelector:
+        karpenter.k8s.aws/instance-category: "g"
+      containers:
+        - name: augment
+          image: ${COSMOS_IMAGE_URI}
+          command:
+            - python
+            - /scripts/stage5_cosmos_transfer.py
+          args:
+            - "--s3_bucket"
+            - "${S3_BUCKET}"
+            - "--run_id"
+            - "${RUN_ID}"
+          resources:
+            requests:
+              nvidia.com/gpu: 1
+              cpu: "16"
+              memory: "32Gi"
+            limits:
+              nvidia.com/gpu: 1

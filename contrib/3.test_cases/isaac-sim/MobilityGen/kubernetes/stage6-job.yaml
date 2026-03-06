@@ -1,0 +1,40 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: amr-stage6-train-evaluate
+  namespace: ${NAMESPACE}
+spec:
+  backoffLimit: 1
+  activeDeadlineSeconds: 14400
+  template:
+    spec:
+      restartPolicy: Never
+      serviceAccountName: amr-pipeline-sa
+      imagePullSecrets:
+        - name: ngc-secret
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
+      nodeSelector:
+        karpenter.k8s.aws/instance-category: "p"
+      containers:
+        - name: train-evaluate
+          image: ${XMOBILITY_IMAGE_URI}
+          command:
+            - python
+            - /scripts/stage6_train_evaluate.py
+          args:
+            - "--s3_bucket"
+            - "${S3_BUCKET}"
+            - "--run_id"
+            - "${RUN_ID}"
+            - "--epochs"
+            - "${EPOCHS:-20}"
+          resources:
+            requests:
+              nvidia.com/gpu: 1
+              cpu: "16"
+              memory: "64Gi"
+            limits:
+              nvidia.com/gpu: 1

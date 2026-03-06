@@ -1,0 +1,220 @@
+apiVersion: osmo.nvidia.com/v1
+kind: Workflow
+metadata:
+  name: amr-navigation-pipeline
+  namespace: isaac-sim
+spec:
+  pool: simulation
+  tasks:
+    # Stage 1: Build warehouse USD scene
+    - name: scene-setup
+      image: 159553542841.dkr.ecr.us-west-2.amazonaws.com/isaac-sim-amr:latest
+      imagePullSecrets:
+        - ngc-secret
+      command:
+        - /isaac-sim/python.sh
+        - /isaac-sim/scripts/stage1_scene_setup.py
+        - --s3_bucket
+        - amr-pipeline-data
+        - --run_id
+        - run-001
+        - --headless
+      env:
+        ACCEPT_EULA: "Y"
+        PRIVACY_CONSENT: "Y"
+      resources:
+        gpu: 1
+        cpu: 16
+        memory: 32Gi
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
+      nodeSelector:
+        karpenter.k8s.aws/instance-category: "g"
+      serviceAccountName: amr-pipeline-sa
+      volumes:
+        - name: cache
+          mountPath: /isaac-sim/.cache
+          emptyDir:
+            sizeLimit: 50Gi
+        - name: shm
+          mountPath: /dev/shm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 16Gi
+      timeout: 1800
+
+    # Stage 2: Compute occupancy grid from scene
+    - name: occupancy-map
+      inputs: [scene-setup]
+      image: 159553542841.dkr.ecr.us-west-2.amazonaws.com/isaac-sim-amr:latest
+      imagePullSecrets:
+        - ngc-secret
+      command:
+        - /isaac-sim/python.sh
+        - /isaac-sim/scripts/stage2_occupancy_map.py
+        - --s3_bucket
+        - amr-pipeline-data
+        - --run_id
+        - run-001
+        - --headless
+      env:
+        ACCEPT_EULA: "Y"
+        PRIVACY_CONSENT: "Y"
+      resources:
+        gpu: 1
+        cpu: 16
+        memory: 32Gi
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
+      nodeSelector:
+        karpenter.k8s.aws/instance-category: "g"
+      serviceAccountName: amr-pipeline-sa
+      volumes:
+        - name: cache
+          mountPath: /isaac-sim/.cache
+          emptyDir:
+            sizeLimit: 50Gi
+        - name: shm
+          mountPath: /dev/shm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 16Gi
+      timeout: 1800
+
+    # Stage 3: A* trajectory planning
+    - name: trajectory-gen
+      inputs: [occupancy-map]
+      image: 159553542841.dkr.ecr.us-west-2.amazonaws.com/isaac-sim-amr:latest
+      imagePullSecrets:
+        - ngc-secret
+      command:
+        - /isaac-sim/python.sh
+        - /isaac-sim/scripts/stage3_trajectory_gen.py
+        - --s3_bucket
+        - amr-pipeline-data
+        - --run_id
+        - run-001
+        - --num_trajectories
+        - "10"
+        - --headless
+      env:
+        ACCEPT_EULA: "Y"
+        PRIVACY_CONSENT: "Y"
+      resources:
+        gpu: 1
+        cpu: 16
+        memory: 32Gi
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
+      nodeSelector:
+        karpenter.k8s.aws/instance-category: "g"
+      serviceAccountName: amr-pipeline-sa
+      volumes:
+        - name: cache
+          mountPath: /isaac-sim/.cache
+          emptyDir:
+            sizeLimit: 50Gi
+        - name: shm
+          mountPath: /dev/shm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 16Gi
+      timeout: 3600
+
+    # Stage 4: Multi-modal rendering (RGB, depth, segmentation)
+    - name: render
+      inputs: [trajectory-gen]
+      image: 159553542841.dkr.ecr.us-west-2.amazonaws.com/isaac-sim-amr:latest
+      imagePullSecrets:
+        - ngc-secret
+      command:
+        - /isaac-sim/python.sh
+        - /isaac-sim/scripts/stage4_render.py
+        - --s3_bucket
+        - amr-pipeline-data
+        - --run_id
+        - run-001
+        - --headless
+      env:
+        ACCEPT_EULA: "Y"
+        PRIVACY_CONSENT: "Y"
+      resources:
+        gpu: 1
+        cpu: 16
+        memory: 32Gi
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
+      nodeSelector:
+        karpenter.k8s.aws/instance-category: "g"
+      serviceAccountName: amr-pipeline-sa
+      volumes:
+        - name: cache
+          mountPath: /isaac-sim/.cache
+          emptyDir:
+            sizeLimit: 50Gi
+        - name: shm
+          mountPath: /dev/shm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 16Gi
+      timeout: 7200
+
+    # Stage 5: Domain augmentation (Cosmos Transfer / torchvision fallback)
+    - name: augment
+      inputs: [render]
+      image: 159553542841.dkr.ecr.us-west-2.amazonaws.com/cosmos-transfer-amr:latest
+      imagePullSecrets:
+        - ngc-secret
+      command:
+        - python
+        - /scripts/stage5_cosmos_transfer.py
+        - --s3_bucket
+        - amr-pipeline-data
+        - --run_id
+        - run-001
+      resources:
+        gpu: 1
+        cpu: 16
+        memory: 32Gi
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
+      nodeSelector:
+        karpenter.k8s.aws/instance-category: "g"
+      serviceAccountName: amr-pipeline-sa
+      timeout: 7200
+
+    # Stage 6: Train CNN navigator + compare raw vs augmented
+    - name: train-evaluate
+      inputs: [render, augment]
+      image: 159553542841.dkr.ecr.us-west-2.amazonaws.com/xmobility-amr:latest
+      imagePullSecrets:
+        - ngc-secret
+      command:
+        - python
+        - /scripts/stage6_train_evaluate.py
+        - --s3_bucket
+        - amr-pipeline-data
+        - --run_id
+        - run-001
+      resources:
+        gpu: 1
+        cpu: 16
+        memory: 64Gi
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
+      nodeSelector:
+        karpenter.k8s.aws/instance-category: "p"
+      serviceAccountName: amr-pipeline-sa
+      timeout: 14400
