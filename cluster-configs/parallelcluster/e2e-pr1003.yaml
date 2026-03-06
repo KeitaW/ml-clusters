@@ -1,0 +1,75 @@
+Region: us-west-2
+Image:
+  Os: ubuntu2204
+HeadNode:
+  InstanceType: c5.2xlarge
+  Networking:
+    SubnetId: ${head_node_subnet_id}
+  Ssh:
+    KeyName: us-west-2-dev
+  LocalStorage:
+    RootVolume:
+      Size: 500
+      DeleteOnTermination: true
+  Iam:
+    AdditionalIamPolicies:
+      - Policy: arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+      - Policy: arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
+      - Policy: arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
+  CustomActions:
+    OnNodeConfigured:
+      Sequence:
+        - Script: 'https://raw.githubusercontent.com/aws-samples/aws-parallelcluster-post-install-scripts/main/docker/postinstall.sh'
+        - Script: 'https://raw.githubusercontent.com/aws-samples/aws-parallelcluster-post-install-scripts/main/pyxis/postinstall.sh'
+  Imds:
+    Secured: false
+Scheduling:
+  Scheduler: slurm
+  SlurmSettings:
+    ScaledownIdletime: 120
+  SlurmQueues:
+    - Name: gpu
+      CapacityType: ONDEMAND
+      Networking:
+        SubnetIds:
+          - ${compute_subnet_id}
+        PlacementGroup:
+          Enabled: true
+          Name: g7e
+      ComputeSettings:
+        LocalStorage:
+          RootVolume:
+            Size: 512
+      ComputeResources:
+        - Name: g7e-48xl
+          InstanceType: g7e.48xlarge
+          MinCount: 2
+          MaxCount: 2
+          Efa:
+            Enabled: true
+          CapacityReservationTarget:
+            CapacityReservationId: ${capacity_reservation_id}
+      CustomActions:
+        OnNodeConfigured:
+          Sequence:
+            - Script: 'https://raw.githubusercontent.com/aws-samples/aws-parallelcluster-post-install-scripts/main/docker/postinstall.sh'
+            - Script: 'https://raw.githubusercontent.com/aws-samples/aws-parallelcluster-post-install-scripts/main/pyxis/postinstall.sh'
+SharedStorage:
+  - Name: fsx-training
+    StorageType: FsxLustre
+    MountDir: /fsx
+    FsxLustreSettings:
+      FileSystemId: ${fsx_filesystem_id}
+  - Name: efs-home
+    StorageType: Efs
+    MountDir: /home
+    EfsSettings:
+      FileSystemId: ${efs_filesystem_id}
+Monitoring:
+  DetailedMonitoring: true
+  Logs:
+    CloudWatch:
+      Enabled: true
+Tags:
+  - Key: Purpose
+    Value: e2e-test-pr1003
