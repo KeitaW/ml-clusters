@@ -5,7 +5,7 @@ metadata:
   namespace: ${NAMESPACE}
 spec:
   backoffLimit: 1
-  activeDeadlineSeconds: 14400
+  activeDeadlineSeconds: 43200
   template:
     spec:
       restartPolicy: Never
@@ -29,21 +29,29 @@ spec:
             - "${S3_BUCKET}"
             - "--run_id"
             - "${RUN_ID}"
-            - "--epochs"
-            - "${EPOCHS:-20}"
+            - "--pretrain_epochs"
+            - "${PRETRAIN_EPOCHS:-10}"
+            - "--train_epochs"
+            - "${TRAIN_EPOCHS:-10}"
           resources:
             requests:
-              nvidia.com/gpu: 1
-              cpu: "16"
-              memory: "64Gi"
+              nvidia.com/gpu: 8
+              cpu: "192"
+              memory: "2048Gi"
             limits:
-              nvidia.com/gpu: 1
+              nvidia.com/gpu: 8
           volumeMounts:
+            - name: shm
+              mountPath: /dev/shm
             - name: output
               mountPath: /output
             - name: input
               mountPath: /input
       volumes:
+        - name: shm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 512Gi
         - name: output
           emptyDir: {}
         - name: input

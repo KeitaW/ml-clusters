@@ -205,7 +205,8 @@ resource "kubectl_manifest" "gpu_ec2nodeclass" {
 
 resource "kubectl_manifest" "training_nodepool" {
   yaml_body = templatefile("${path.module}/karpenter/nodepool-training.yaml", {
-    max_training_gpus = var.max_training_gpus
+    max_training_gpus      = var.max_training_gpus
+    training_instance_type = var.training_instance_type
   })
 
   depends_on = [helm_release.karpenter]
@@ -213,8 +214,9 @@ resource "kubectl_manifest" "training_nodepool" {
 
 resource "kubectl_manifest" "training_ec2nodeclass" {
   yaml_body = templatefile("${path.module}/karpenter/ec2nodeclass-training.yaml", {
-    cluster_name = var.cluster_name
-    node_role    = module.eks.karpenter_node_iam_role_name
+    cluster_name            = var.cluster_name
+    node_role               = module.eks.karpenter_node_iam_role_name
+    capacity_reservation_id = var.capacity_reservation_id
   })
 
   depends_on = [helm_release.karpenter]

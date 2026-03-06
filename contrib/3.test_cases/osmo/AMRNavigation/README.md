@@ -9,7 +9,7 @@ This test case includes two modes:
 1. **Single-stage SDG** (legacy): One-shot MobilityGen data generation using `automated_mobilitygen.py`
 2. **6-stage AMR pipeline**: Full scene-to-training demo workflow orchestrated as an OSMO DAG
 
-This is a **demo pipeline** for validating the OSMO + EKS + Karpenter integration. Stage 6 trains a baseline waypoint regressor (ResNet18), not a production navigation model.
+Stage 6 trains NVIDIA's [X-Mobility](https://github.com/NVlabs/X-MOBILITY) navigation foundation model (~1B params) on MobilityGen-generated datasets, using Karpenter-managed capacity reservations for training compute.
 
 ### 6-Stage Pipeline Architecture
 
@@ -26,7 +26,7 @@ scene-setup --> occupancy-map --> trajectory-gen --> render --+--> domain-augmen
 | 3. Trajectory Gen | `stage3_trajectory_gen.py` | isaac-sim-amr | G-series (rendering) | A* path planning + camera poses |
 | 4. Render | `stage4_render.py` | isaac-sim-amr | G-series (rendering) | RGB/depth/segmentation rendering |
 | 5. Domain Augment | `stage5_domain_augment.py` | cosmos-transfer-amr | G-series (rendering) | Visual augmentation (torchvision, Cosmos Transfer-compatible) |
-| 6. Train+Eval | `stage6_train_evaluate.py` | xmobility-amr | P-series (training) | Baseline waypoint regressor, A vs B comparison |
+| 6. Train+Eval | `stage6_train_evaluate.py` | xmobility-amr | P6-B300 (training) | X-Mobility foundation model training (8 GPUs, capacity reservation) |
 
 **OSMO orchestration features used:**
 - DAG task dependencies via `inputs:`
@@ -39,10 +39,12 @@ scene-setup --> occupancy-map --> trajectory-gen --> render --+--> domain-augmen
 
 ## Prerequisites
 
-- Amazon EKS cluster with GPU nodes (G5/G6 for rendering, P-series for training)
+- Amazon EKS cluster with GPU nodes (G5/G6 for rendering, P6-B300 for training)
 - NVIDIA GPU Operator + KAI Scheduler + OSMO Platform installed
-- Karpenter with separate NodePools for rendering (G-series) and training (P-series)
+- Karpenter with separate NodePools: rendering (G-series on-demand) and training (P6-B300 via capacity reservation)
+- EC2 Capacity Reservation for training instances (e.g., `cr-060a52a865d1673d0` for p6-b300.48xlarge)
 - [NVIDIA NGC](https://ngc.nvidia.com/) account and API key
+- X-Mobility datasets from [HuggingFace](https://huggingface.co/datasets/nvidia/X-Mobility), pre-cached in S3
 - S3 bucket for inter-stage data + IRSA ServiceAccount
 - Docker, `kubectl`, and AWS CLI configured
 
@@ -84,7 +86,7 @@ See [kubernetes/README.md](kubernetes/README.md) for detailed per-stage instruct
 | `isaac-sim-mobilitygen` | `Dockerfile` | Isaac Sim 5.1.0 | Legacy single-stage |
 | `isaac-sim-amr` | `Dockerfile.isaac-sim` | Isaac Sim 5.1.0 | 1-4 (scene, occupancy, trajectory, render) |
 | `cosmos-transfer-amr` | `Dockerfile.cosmos-transfer` | PyTorch 24.05 | 5 (domain augmentation) |
-| `xmobility-amr` | `Dockerfile.xmobility` | PyTorch 24.05 | 6 (baseline training + evaluation) |
+| `xmobility-amr` | `Dockerfile.xmobility` | PyTorch 24.01 + X-Mobility | 6 (X-Mobility foundation model training) |
 
 ## S3 Output Structure
 
@@ -95,7 +97,9 @@ s3://<bucket>/amr-pipeline/<run-id>/
   trajectories/       # trajectory_XXXX.json files + metadata.json
   raw-v1/             # rgb/ depth/ semantic_segmentation/
   augmented-v2/       # rgb/ depth/ semantic_segmentation/
-  results/            # model_*.pt + metrics.json
+  xmobility-datasets/ # X-Mobility training data (pre-cached from HuggingFace)
+  checkpoints/        # pretrain/ and train/ checkpoints
+  results/            # metrics.json + final model
 ```
 
 ## Instance Recommendations
@@ -104,7 +108,7 @@ s3://<bucket>/amr-pipeline/<run-id>/
 |----------|------|-----------|-------|-----|-----|
 | g5.4xlarge | 1 | 24 GB | 16 | 64 GB | Stages 1-5 (rendering, augmentation) |
 | g6.2xlarge | 1 | 24 GB | 8 | 32 GB | Stages 1-5 (latest gen) |
-| p4d.24xlarge | 8 | 320 GB | 96 | 1152 GB | Stage 6 (training) |
+| p6-b300.48xlarge | 8 | 1.5 TB | 192 | 2 TB | Stage 6 (X-Mobility training, capacity reservation) |
 
 ## Troubleshooting
 

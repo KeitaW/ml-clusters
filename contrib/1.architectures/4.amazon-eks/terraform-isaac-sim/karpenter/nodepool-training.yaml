@@ -8,13 +8,10 @@ spec:
       requirements:
         - key: karpenter.sh/capacity-type
           operator: In
-          values: ["on-demand"]
-        - key: karpenter.k8s.aws/instance-category
+          values: ["capacity-reservation"]
+        - key: node.kubernetes.io/instance-type
           operator: In
-          values: ["p"]
-        - key: karpenter.k8s.aws/instance-generation
-          operator: Gt
-          values: ["3"]
+          values: ["${training_instance_type}"]
       taints:
         - key: nvidia.com/gpu
           effect: NoSchedule
@@ -26,4 +23,4 @@ spec:
     nvidia.com/gpu: ${max_training_gpus}
   disruption:
     consolidationPolicy: WhenEmpty
-    consolidateAfter: 30m
+    consolidateAfter: 5m

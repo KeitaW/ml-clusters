@@ -230,7 +230,7 @@ spec:
           emptyDir: {}
       timeout: 7200
 
-    # Stage 6: Baseline waypoint regressor — train + compare raw vs augmented
+    # Stage 6: X-Mobility navigation model training (two-stage: world model + action policy)
     - name: train-evaluate
       inputs: [render, domain-augment]
       image: 159553542841.dkr.ecr.us-west-2.amazonaws.com/xmobility-amr:latest
@@ -243,10 +243,14 @@ spec:
         - amr-pipeline-data
         - --run_id
         - run-001
+        - --pretrain_epochs
+        - "10"
+        - --train_epochs
+        - "10"
       resources:
-        gpu: 1
-        cpu: 16
-        memory: 64Gi
+        gpu: 8
+        cpu: 192
+        memory: 2048Gi
       tolerations:
         - key: nvidia.com/gpu
           operator: Exists
@@ -256,13 +260,16 @@ spec:
       schedulerName: kai-scheduler
       serviceAccountName: amr-pipeline-sa
       volumes:
+        - name: shm
+          mountPath: /dev/shm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 512Gi
         - name: output
           mountPath: /output
           emptyDir: {}
         - name: input
           mountPath: /input
           emptyDir: {}
-      # Checkpoint support: training can be resumed from last saved checkpoint
-      # on reschedule. Stage 6 saves checkpoints to S3 after each epoch.
       exitAction: reschedule
-      timeout: 14400
+      timeout: 43200

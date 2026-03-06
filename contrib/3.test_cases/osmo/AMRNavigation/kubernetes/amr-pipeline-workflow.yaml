@@ -237,10 +237,14 @@ spec:
         - "${S3_BUCKET}"
         - --run_id
         - "${RUN_ID}"
+        - --pretrain_epochs
+        - "${PRETRAIN_EPOCHS:-10}"
+        - --train_epochs
+        - "${TRAIN_EPOCHS:-10}"
       resources:
-        gpu: 1
-        cpu: 16
-        memory: 64Gi
+        gpu: 8
+        cpu: 192
+        memory: 2048Gi
       tolerations:
         - key: nvidia.com/gpu
           operator: Exists
@@ -250,13 +254,16 @@ spec:
       schedulerName: kai-scheduler
       serviceAccountName: amr-pipeline-sa
       volumes:
+        - name: shm
+          mountPath: /dev/shm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 512Gi
         - name: output
           mountPath: /output
           emptyDir: {}
         - name: input
           mountPath: /input
           emptyDir: {}
-      # Checkpoint support: training saves checkpoints to S3 after each epoch
-      # and can be resumed on reschedule.
       exitAction: reschedule
-      timeout: 14400
+      timeout: 43200

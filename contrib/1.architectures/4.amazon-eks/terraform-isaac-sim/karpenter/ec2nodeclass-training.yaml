@@ -4,6 +4,10 @@ metadata:
   name: gpu-training
 spec:
   role: ${node_role}
+%{ if capacity_reservation_id != "" }
+  capacityReservationSelectorTerms:
+    - id: "${capacity_reservation_id}"
+%{ endif }
   amiSelectorTerms:
     - alias: al2023@latest
   subnetSelectorTerms:
@@ -15,9 +19,9 @@ spec:
   blockDeviceMappings:
     - deviceName: /dev/xvda
       ebs:
-        volumeSize: 500Gi
+        volumeSize: 2000Gi
         volumeType: gp3
-        iops: 6000
-        throughput: 400
+        iops: 10000
+        throughput: 1000
         encrypted: true
   instanceStorePolicy: RAID0

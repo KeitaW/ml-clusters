@@ -35,9 +35,21 @@ variable "max_gpu_nodes" {
 }
 
 variable "max_training_gpus" {
-  description = "Maximum number of training GPUs (P-series) Karpenter can provision"
+  description = "Maximum number of training GPUs Karpenter can provision"
   type        = number
-  default     = 8
+  default     = 48
+}
+
+variable "training_instance_type" {
+  description = "Instance type for training NodePool (e.g., p5.48xlarge, p6-b300.48xlarge)"
+  type        = string
+  default     = "p6-b300.48xlarge"
+}
+
+variable "capacity_reservation_id" {
+  description = "EC2 Capacity Reservation ID for training instances (leave empty for on-demand)"
+  type        = string
+  default     = ""
 }
 
 variable "tags" {
