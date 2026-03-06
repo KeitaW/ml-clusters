@@ -10,6 +10,7 @@ module "pcluster" {
   api_stack_name      = local.api_stack_name
   api_version         = var.api_version
   deploy_pcluster_api = var.deploy_pcluster_api
+  parameters          = var.api_parameters
 
   cluster_configs = { for name, config in var.cluster_configs : name => {
     configuration = yamldecode(templatefile(config.config_path, {

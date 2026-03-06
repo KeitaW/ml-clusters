@@ -134,6 +134,11 @@ projects:
     workflow: terragrunt
     execution_order_group: 4
 
+  - name: main-us-west-2-parallelcluster
+    dir: live/main-account/us-west-2/parallelcluster
+    workflow: terragrunt
+    execution_order_group: 4
+
   - name: main-us-east-1-hyperpod-eks
     dir: live/main-account/us-east-1/hyperpod-eks
     workflow: terragrunt
