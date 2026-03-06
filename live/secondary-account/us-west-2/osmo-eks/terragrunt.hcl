@@ -49,6 +49,8 @@ inputs = {
 
   # OSMO IRSA — S3 access for workflow data and checkpoints
   osmo_s3_bucket_arns = [dependency.s3_replica.outputs.bucket_arn]
+  # Wildcard for RDS-managed secrets — avoids circular dependency with osmo-data
+  osmo_db_secret_arns = ["arn:aws:secretsmanager:us-west-2:159553542841:secret:rds!cluster-*"]
 
   # No HyperPod add-ons for OSMO cluster
   enable_cloudwatch_observability = false

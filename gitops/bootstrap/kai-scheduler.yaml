@@ -1,0 +1,37 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: kai-scheduler
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions:
+    - missingkey=error
+  generators:
+    - clusters:
+        selector:
+          matchLabels:
+            enable_kai_scheduler: "true"
+  template:
+    metadata:
+      name: 'kai-scheduler-{{.name}}'
+    spec:
+      project: default
+      source:
+        repoURL: ghcr.io/nvidia/kai-scheduler
+        chart: kai-scheduler
+        targetRevision: 0.13.0
+        helm:
+          valuesObject:
+            global:
+              gpuSharing: true
+      destination:
+        server: '{{.server}}'
+        namespace: kai-scheduler
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true

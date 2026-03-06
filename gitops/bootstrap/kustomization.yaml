@@ -13,3 +13,10 @@ resources:
   - dcgm-exporter.yaml
   - kuberay-operator.yaml
   - ray-cluster.yaml
+  - kai-scheduler.yaml
+  - gpu-operator.yaml
+  - osmo-secrets.yaml
+  - osmo-service.yaml
+  - osmo-backend-operator.yaml
+  - osmo-router.yaml
+  - osmo-web-ui.yaml

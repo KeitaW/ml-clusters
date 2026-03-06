@@ -373,32 +373,39 @@ resource "aws_iam_policy" "osmo" {
 
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [
-      {
+    Statement = concat(
+      [
+        {
+          Effect   = "Allow"
+          Action   = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"]
+          Resource = [for arn in var.osmo_s3_bucket_arns : "${arn}/*"]
+        },
+        {
+          Effect   = "Allow"
+          Action   = ["s3:ListBucket"]
+          Resource = var.osmo_s3_bucket_arns
+        },
+        {
+          Effect   = "Allow"
+          Action   = ["ecr:GetAuthorizationToken"]
+          Resource = "*"
+        },
+        {
+          Effect = "Allow"
+          Action = [
+            "ecr:GetDownloadUrlForLayer",
+            "ecr:BatchGetImage",
+            "ecr:BatchCheckLayerAvailability",
+          ]
+          Resource = "arn:aws:ecr:*:*:repository/*"
+        },
+      ],
+      length(var.osmo_db_secret_arns) > 0 ? [{
         Effect   = "Allow"
-        Action   = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"]
-        Resource = [for arn in var.osmo_s3_bucket_arns : "${arn}/*"]
-      },
-      {
-        Effect   = "Allow"
-        Action   = ["s3:ListBucket"]
-        Resource = var.osmo_s3_bucket_arns
-      },
-      {
-        Effect   = "Allow"
-        Action   = ["ecr:GetAuthorizationToken"]
-        Resource = "*"
-      },
-      {
-        Effect = "Allow"
-        Action = [
-          "ecr:GetDownloadUrlForLayer",
-          "ecr:BatchGetImage",
-          "ecr:BatchCheckLayerAvailability",
-        ]
-        Resource = "arn:aws:ecr:*:*:repository/*"
-      }
-    ]
+        Action   = ["secretsmanager:GetSecretValue", "secretsmanager:DescribeSecret"]
+        Resource = var.osmo_db_secret_arns
+      }] : []
+    )
   })
 }
 
