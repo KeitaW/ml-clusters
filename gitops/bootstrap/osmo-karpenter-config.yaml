@@ -1,0 +1,43 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: osmo-karpenter-config
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions:
+    - missingkey=error
+  generators:
+    - clusters:
+        selector:
+          matchLabels:
+            enable_osmo_karpenter: "true"
+  template:
+    metadata:
+      name: 'osmo-karpenter-config-{{.name}}'
+    spec:
+      project: default
+      source:
+        repoURL: https://github.com/KeitaW/ml-clusters.git
+        targetRevision: main
+        path: gitops/charts/osmo-karpenter-config
+        helm:
+          valuesObject:
+            clusterName: '{{index .metadata.annotations "cluster_name"}}'
+            instanceProfileName: '{{index .metadata.annotations "karpenter_instance_profile"}}'
+      destination:
+        server: '{{.server}}'
+        namespace: kube-system
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        retry:
+          limit: 10
+          backoff:
+            duration: 30s
+            factor: 2
+            maxDuration: 5m
+        syncOptions:
+          - SkipDryRunOnMissingResource=true
+          - ServerSideApply=true

@@ -337,6 +337,77 @@ resource "aws_iam_role_policy_attachment" "ray" {
   policy_arn = aws_iam_policy.ray[0].arn
 }
 
+# OSMO IRSA role — S3 + ECR access for OSMO workflows
+data "aws_iam_policy_document" "osmo_trust" {
+  count = length(var.osmo_s3_bucket_arns) > 0 ? 1 : 0
+
+  statement {
+    actions = ["sts:AssumeRoleWithWebIdentity"]
+    principals {
+      type        = "Federated"
+      identifiers = [module.eks.oidc_provider_arn]
+    }
+    condition {
+      test     = "StringLike"
+      variable = "${replace(module.eks.oidc_provider, "https://", "")}:sub"
+      values   = ["system:serviceaccount:osmo-system:osmo-*"]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "${replace(module.eks.oidc_provider, "https://", "")}:aud"
+      values   = ["sts.amazonaws.com"]
+    }
+  }
+}
+
+resource "aws_iam_role" "osmo" {
+  count              = length(var.osmo_s3_bucket_arns) > 0 ? 1 : 0
+  name               = "OSMO-${var.cluster_name}"
+  assume_role_policy = data.aws_iam_policy_document.osmo_trust[0].json
+  tags               = var.tags
+}
+
+resource "aws_iam_policy" "osmo" {
+  count = length(var.osmo_s3_bucket_arns) > 0 ? 1 : 0
+  name  = "OSMOPolicy-${var.cluster_name}"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"]
+        Resource = [for arn in var.osmo_s3_bucket_arns : "${arn}/*"]
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["s3:ListBucket"]
+        Resource = var.osmo_s3_bucket_arns
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["ecr:GetAuthorizationToken"]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "ecr:GetDownloadUrlForLayer",
+          "ecr:BatchGetImage",
+          "ecr:BatchCheckLayerAvailability",
+        ]
+        Resource = "arn:aws:ecr:*:*:repository/*"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "osmo" {
+  count      = length(var.osmo_s3_bucket_arns) > 0 ? 1 : 0
+  role       = aws_iam_role.osmo[0].name
+  policy_arn = aws_iam_policy.osmo[0].arn
+}
+
 # ArgoCD hub access entries
 resource "aws_eks_access_entry" "argocd" {
   for_each = toset(var.argocd_access_role_arns)

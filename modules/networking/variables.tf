@@ -40,6 +40,12 @@ variable "eks_cluster_name" {
   default     = ""
 }
 
+variable "additional_private_subnet_tags" {
+  description = "Additional tags for private subnets (e.g., multi-cluster Karpenter discovery)"
+  type        = map(string)
+  default     = {}
+}
+
 variable "tags" {
   description = "Additional tags"
   type        = map(string)

@@ -73,6 +73,11 @@ output "ray_role_arn" {
   value       = try(aws_iam_role.ray[0].arn, "")
 }
 
+output "osmo_role_arn" {
+  description = "ARN of the OSMO IRSA role"
+  value       = try(aws_iam_role.osmo[0].arn, "")
+}
+
 output "aws_region" {
   description = "AWS region of the cluster"
   value       = var.aws_region

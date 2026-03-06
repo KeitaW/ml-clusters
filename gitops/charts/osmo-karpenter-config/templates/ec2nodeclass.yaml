@@ -1,0 +1,98 @@
+---
+# Subnet discovery uses namespaced tag key (karpenter.sh/discovery/{cluster}) for multi-cluster
+# VPC sharing. Security group uses standard tag (karpenter.sh/discovery: {cluster}) because the
+# node SG is per-cluster, tagged by the EKS module's node_security_group_tags.
+apiVersion: karpenter.k8s.aws/v1
+kind: EC2NodeClass
+metadata:
+  name: osmo-gpu
+spec:
+  role: {{ .Values.nodeRoleName }}
+  amiSelectorTerms:
+    - alias: al2023@latest
+  subnetSelectorTerms:
+    - tags:
+        karpenter.sh/discovery/{{ .Values.clusterName }}: "true"
+  securityGroupSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: {{ .Values.clusterName }}
+  blockDeviceMappings:
+    - deviceName: /dev/xvda
+      ebs:
+        volumeSize: 500Gi
+        volumeType: gp3
+        iops: 10000
+        throughput: 500
+        encrypted: true
+  instanceStorePolicy: RAID0
+  userData: |
+    #!/bin/bash
+    echo "Configuring instance store for OSMO GPU nodes..."
+---
+apiVersion: karpenter.k8s.aws/v1
+kind: EC2NodeClass
+metadata:
+  name: osmo-cpu
+spec:
+  role: {{ .Values.nodeRoleName }}
+  amiSelectorTerms:
+    - alias: al2023@latest
+  subnetSelectorTerms:
+    - tags:
+        karpenter.sh/discovery/{{ .Values.clusterName }}: "true"
+  securityGroupSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: {{ .Values.clusterName }}
+  blockDeviceMappings:
+    - deviceName: /dev/xvda
+      ebs:
+        volumeSize: 200Gi
+        volumeType: gp3
+        iops: 6000
+        throughput: 400
+        encrypted: true
+---
+apiVersion: karpenter.k8s.aws/v1
+kind: EC2NodeClass
+metadata:
+  name: osmo-cpu-system
+spec:
+  role: {{ .Values.nodeRoleName }}
+  amiSelectorTerms:
+    - alias: al2023@latest
+  subnetSelectorTerms:
+    - tags:
+        karpenter.sh/discovery/{{ .Values.clusterName }}: "true"
+  securityGroupSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: {{ .Values.clusterName }}
+  blockDeviceMappings:
+    - deviceName: /dev/xvda
+      ebs:
+        volumeSize: 100Gi
+        volumeType: gp3
+        encrypted: true
+---
+apiVersion: karpenter.k8s.aws/v1
+kind: EC2NodeClass
+metadata:
+  name: osmo-rendering
+spec:
+  role: {{ .Values.nodeRoleName }}
+  amiSelectorTerms:
+    - alias: al2023@latest
+  subnetSelectorTerms:
+    - tags:
+        karpenter.sh/discovery/{{ .Values.clusterName }}: "true"
+  securityGroupSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: {{ .Values.clusterName }}
+  blockDeviceMappings:
+    - deviceName: /dev/xvda
+      ebs:
+        volumeSize: 300Gi
+        volumeType: gp3
+        iops: 6000
+        throughput: 400
+        encrypted: true
+  instanceStorePolicy: RAID0
