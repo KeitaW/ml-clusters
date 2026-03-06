@@ -43,6 +43,19 @@ spec:
               host: '{{index .metadata.annotations "osmo_redis_endpoint"}}'
               port: '{{index .metadata.annotations "osmo_redis_port"}}'
               tls: true
+            services:
+              service:
+                ingress:
+                  enabled: false
+              agent:
+                ingress:
+                  enabled: false
+              logger:
+                ingress:
+                  enabled: false
+            sidecars:
+              otel:
+                enabled: false
       destination:
         server: '{{.server}}'
         namespace: osmo-system

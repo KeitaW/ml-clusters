@@ -28,6 +28,9 @@ spec:
               name: osmo-backend-operator
               annotations:
                 eks.amazonaws.com/role-arn: '{{index .metadata.annotations "osmo_role_arn"}}'
+            global:
+              agentNamespace: osmo-system
+              backendNamespace: osmo-system
             config:
               serviceUrl: http://osmo-service.osmo-system.svc.cluster.local:8080
       destination:

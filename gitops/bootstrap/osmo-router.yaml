@@ -34,6 +34,9 @@ spec:
               enabled: false
             authz:
               enabled: false
+            router:
+              ingress:
+                enabled: false
       destination:
         server: '{{.server}}'
         namespace: osmo-system
