@@ -81,6 +81,33 @@ dependency "monitoring_secondary_east1" {
   mock_outputs_allowed_terraform_commands = ["validate", "plan", "apply", "destroy"]
 }
 
+dependency "eks_osmo" {
+  config_path = "../../../secondary-account/us-west-2/osmo-eks"
+
+  mock_outputs = {
+    cluster_name                       = "osmo-secondary-us-west-2"
+    cluster_endpoint                   = "https://mock-endpoint.eks.us-west-2.amazonaws.com"
+    cluster_certificate_authority_data = "bW9jaw=="
+    vpc_id                             = "vpc-mock"
+    karpenter_node_role_name           = "KarpenterNode-mock"
+    karpenter_node_role_arn            = "arn:aws:iam::159553542841:role/mock"
+    karpenter_queue_name               = "mock-queue"
+    karpenter_instance_profile_name    = ""
+    adot_role_arn                      = ""
+  }
+  mock_outputs_allowed_terraform_commands = ["validate", "plan", "apply", "destroy"]
+  mock_outputs_merge_strategy_with_state  = "shallow"
+}
+
+dependency "monitoring_secondary_west2" {
+  config_path = "../../../secondary-account/us-west-2/monitoring"
+
+  mock_outputs = {
+    amp_remote_write_endpoint = "https://mock-aps.us-west-2.amazonaws.com"
+  }
+  mock_outputs_allowed_terraform_commands = ["validate", "plan", "apply", "destroy"]
+}
+
 inputs = {
   cluster_name           = dependency.eks_hub.outputs.cluster_name
   cluster_endpoint       = dependency.eks_hub.outputs.cluster_endpoint
@@ -180,6 +207,29 @@ inputs = {
         enable_external_dns        = "false"
         enable_adot                = "true"
         enable_kuberay             = "true"
+      }
+    }
+    "osmo-secondary-us-west-2" = {
+      name         = "osmo-secondary-us-west-2"
+      server       = dependency.eks_osmo.outputs.cluster_endpoint
+      ca_data      = dependency.eks_osmo.outputs.cluster_certificate_authority_data
+      cluster_name = dependency.eks_osmo.outputs.cluster_name
+      role_arn     = "arn:aws:iam::159553542841:role/ArgoCD-Spoke-Access"
+      annotations = {
+        aws_account_id             = "159553542841"
+        aws_region                 = "us-west-2"
+        cluster_type               = "osmo"
+        vpc_id                     = dependency.eks_osmo.outputs.vpc_id
+        karpenter_node_role_name   = dependency.eks_osmo.outputs.karpenter_node_role_name
+        karpenter_node_role_arn    = dependency.eks_osmo.outputs.karpenter_node_role_arn
+        karpenter_queue_name       = dependency.eks_osmo.outputs.karpenter_queue_name
+        adot_role_arn              = dependency.eks_osmo.outputs.adot_role_arn
+        amp_region                 = "us-west-2"
+        amp_remote_write_endpoint  = dependency.monitoring_secondary_west2.outputs.amp_remote_write_endpoint
+        enable_karpenter           = "true"
+        enable_osmo_karpenter      = "true"
+        enable_external_dns        = "false"
+        enable_adot                = "true"
       }
     }
   }

@@ -48,6 +48,11 @@ output "karpenter_instance_profile_name" {
   value       = module.karpenter.instance_profile_name != null ? module.karpenter.instance_profile_name : ""
 }
 
+output "karpenter_node_role_name" {
+  description = "The name of the Karpenter node IAM role"
+  value       = module.karpenter.node_iam_role_name
+}
+
 output "ebs_csi_role_arn" {
   description = "IAM role ARN for the EBS CSI driver"
   value       = aws_iam_role.ebs_csi.arn
