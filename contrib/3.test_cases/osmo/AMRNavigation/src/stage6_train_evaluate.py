@@ -134,6 +134,13 @@ def main():
     pretrain_output = os.path.join(args.output_dir, "pretrain")
     train_output = os.path.join(args.output_dir, "train")
 
+    # X-Mobility expects <path>/train/<scenario>/<files> structure
+    # random_160k for world model pretraining, nav2_100k for action policy
+    pretrain_dataset = os.path.join(args.dataset_dir, "afm_isaac_sim_random_160k", "data")
+    train_dataset = os.path.join(args.dataset_dir, "afm_isaac_sim_nav2_100k", "data")
+    print(f"[Stage6] Pretrain dataset: {pretrain_dataset} (exists: {os.path.isdir(pretrain_dataset)})")
+    print(f"[Stage6] Train dataset: {train_dataset} (exists: {os.path.isdir(train_dataset)})")
+
     os.makedirs(pretrain_output, exist_ok=True)
     os.makedirs(train_output, exist_ok=True)
 
@@ -156,7 +163,7 @@ def main():
         print(f"\n[Stage6] === World Model Pretraining ({args.pretrain_epochs} epochs) ===")
         pretrain_time = run_xmobility_train(
             args.xmobility_dir, pretrain_config,
-            args.dataset_dir, pretrain_output,
+            pretrain_dataset, pretrain_output,
             label="WorldModelPretrain",
             wandb_entity=args.wandb_entity,
             wandb_project=args.wandb_project,
@@ -177,7 +184,7 @@ def main():
     print(f"\n[Stage6] === Action Policy Training ({args.train_epochs} epochs) ===")
     train_time = run_xmobility_train(
         args.xmobility_dir, train_config,
-        args.dataset_dir, train_output,
+        train_dataset, train_output,
         label="ActionPolicyTrain",
         wandb_entity=args.wandb_entity,
         wandb_project=args.wandb_project,
