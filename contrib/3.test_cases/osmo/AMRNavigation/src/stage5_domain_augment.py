@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
-"""Stage 5: Domain Augmentation (Cosmos Transfer or torchvision fallback).
+"""Stage 5: Domain Augmentation.
 
-Downloads raw-v1/ from S3, applies domain transfer augmentations,
-and uploads augmented-v2/ to S3.
+Downloads raw-v1/ from S3, applies visual domain augmentations, and
+uploads augmented-v2/ to S3. The augmentation pipeline is Cosmos
+Transfer-compatible: if the cosmos_transfer package is installed in
+the container image, it will be used. Otherwise, falls back to
+torchvision transforms (ColorJitter, sharpness, blur) which produce
+varied appearance while preserving scene structure.
 
 Usage:
-    python /scripts/stage5_cosmos_transfer.py \
+    python /scripts/stage5_domain_augment.py \
         --s3_bucket my-bucket --run_id run-001
 """
 
@@ -43,7 +47,12 @@ def try_cosmos_transfer(input_dir, output_dir):
 
 
 def torchvision_augment(input_dir, output_dir, num_variants=1):
-    """Fallback augmentation using torchvision transforms."""
+    """Fallback augmentation using torchvision transforms.
+
+    Handles both flat layout (BasicWriter: rgb_XXXX.png in root) and
+    subdirectory layout (CosmosWriter: rgb/frame_XXXXXX.png).
+    """
+    import shutil
     import numpy as np
     from PIL import Image
     from torchvision import transforms
@@ -54,35 +63,60 @@ def torchvision_augment(input_dir, output_dir, num_variants=1):
         transforms.GaussianBlur(kernel_size=3, sigma=(0.1, 1.0)),
     ])
 
-    rgb_in = os.path.join(input_dir, "rgb")
-    rgb_out = os.path.join(output_dir, "rgb")
-    os.makedirs(rgb_out, exist_ok=True)
+    # Detect layout: subdirectory (rgb/) or flat (rgb_XXXX.png in root)
+    rgb_subdir = os.path.join(input_dir, "rgb")
+    flat_layout = not os.path.isdir(rgb_subdir)
 
-    # Copy depth and segmentation unchanged
-    for subdir in ["depth", "semantic_segmentation"]:
-        src = os.path.join(input_dir, subdir)
-        dst = os.path.join(output_dir, subdir)
-        if os.path.exists(src):
-            os.makedirs(dst, exist_ok=True)
-            for fname in os.listdir(src):
-                src_file = os.path.join(src, fname)
-                dst_file = os.path.join(dst, fname)
-                if fname.endswith(".npy"):
-                    np.save(dst_file, np.load(src_file))
-                else:
-                    Image.open(src_file).save(dst_file)
+    if flat_layout:
+        # Flat layout: rgb_XXXX.png, distance_to_image_plane_XXXX.npy, etc.
+        print("[Stage5] Detected flat output layout (BasicWriter)")
+        os.makedirs(output_dir, exist_ok=True)
 
-    if not os.path.exists(rgb_in):
-        print("[Stage5] Warning: No RGB directory found in input")
+        # Copy non-RGB files unchanged
+        for fname in os.listdir(input_dir):
+            src_file = os.path.join(input_dir, fname)
+            if not os.path.isfile(src_file):
+                continue
+            if not fname.startswith("rgb_"):
+                shutil.copy2(src_file, os.path.join(output_dir, fname))
+
+        # Augment RGB files
+        rgb_files = sorted([
+            f for f in os.listdir(input_dir)
+            if f.startswith("rgb_") and f.lower().endswith((".png", ".jpg", ".jpeg"))
+        ])
+    else:
+        # Subdirectory layout: rgb/, depth/, semantic_segmentation/
+        print("[Stage5] Detected subdirectory layout")
+        rgb_out = os.path.join(output_dir, "rgb")
+        os.makedirs(rgb_out, exist_ok=True)
+
+        # Copy depth and segmentation unchanged
+        for subdir in ["depth", "semantic_segmentation"]:
+            src = os.path.join(input_dir, subdir)
+            dst = os.path.join(output_dir, subdir)
+            if os.path.exists(src):
+                os.makedirs(dst, exist_ok=True)
+                for fname in os.listdir(src):
+                    shutil.copy2(os.path.join(src, fname), os.path.join(dst, fname))
+
+        rgb_files = sorted([
+            f for f in os.listdir(rgb_subdir)
+            if f.lower().endswith((".png", ".jpg", ".jpeg"))
+        ])
+
+    if not rgb_files:
+        print("[Stage5] Warning: No RGB files found in input")
         return 0
 
-    frame_count = 0
-    rgb_files = sorted(os.listdir(rgb_in))
-    for fname in rgb_files:
-        if not fname.lower().endswith((".png", ".jpg", ".jpeg")):
-            continue
+    print(f"[Stage5] Found {len(rgb_files)} RGB files to augment")
 
-        img = Image.open(os.path.join(rgb_in, fname)).convert("RGB")
+    frame_count = 0
+    for fname in rgb_files:
+        src_path = os.path.join(input_dir, fname) if flat_layout else os.path.join(rgb_subdir, fname)
+        dst_dir = output_dir if flat_layout else os.path.join(output_dir, "rgb")
+
+        img = Image.open(src_path).convert("RGB")
 
         for v in range(num_variants):
             augmented = augment_pipeline(img)
@@ -91,7 +125,7 @@ def torchvision_augment(input_dir, output_dir, num_variants=1):
                 out_name = f"{base}_v{v}{ext}"
             else:
                 out_name = fname
-            augmented.save(os.path.join(rgb_out, out_name))
+            augmented.save(os.path.join(dst_dir, out_name))
             frame_count += 1
 
     return frame_count
@@ -102,7 +136,7 @@ def main():
     print("[Stage5] Starting domain augmentation")
 
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-    from utils.s3_sync import download_directory, upload_directory, make_stage_path
+    from amr_utils.s3_sync import download_directory, upload_directory, make_stage_path
 
     # Download raw renders
     raw_s3 = make_stage_path(args.s3_bucket, args.run_id, "raw-v1")

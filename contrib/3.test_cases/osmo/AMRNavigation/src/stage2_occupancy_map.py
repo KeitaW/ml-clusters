@@ -2,7 +2,7 @@
 """Stage 2: Occupancy Map Generation.
 
 Downloads the warehouse USD scene from S3, computes a 2D occupancy grid
-via top-down orthographic depth render, and uploads the result.
+directly from prim bounding boxes (no rendering required), and uploads.
 
 Usage (inside Isaac Sim container):
     /isaac-sim/python.sh /isaac-sim/scripts/stage2_occupancy_map.py \
@@ -17,6 +17,12 @@ import sys
 
 print = functools.partial(print, flush=True)
 
+# Ensure amr_utils package is importable
+_SCRIPTS_DIR = os.path.dirname(os.path.abspath(__file__)) if "__file__" in dir() else "/isaac-sim/scripts"
+for _p in [_SCRIPTS_DIR, "/isaac-sim/scripts"]:
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Stage 2: Occupancy Map Generation")
@@ -25,7 +31,6 @@ def parse_args():
     parser.add_argument("--output_dir", type=str, default="/output/occupancy")
     parser.add_argument("--scene_dir", type=str, default="/input/scene")
     parser.add_argument("--resolution", type=float, default=0.1, help="Grid resolution in meters/pixel")
-    parser.add_argument("--depth_threshold", type=float, default=0.5, help="Depth threshold for obstacle detection")
     parser.add_argument("--headless", action="store_true", default=True)
     return parser.parse_args()
 
@@ -34,12 +39,7 @@ def main():
     args = parse_args()
     print("[Stage2] Starting occupancy map generation")
 
-    # Download scene from S3
-    scripts_dir = os.path.dirname(os.path.abspath(__file__))
-    if scripts_dir not in sys.path:
-        sys.path.insert(0, scripts_dir)
-
-    from utils.s3_sync import download_directory, upload_directory, make_stage_path
+    from amr_utils.s3_sync import download_directory, upload_directory, make_stage_path
 
     scene_s3 = make_stage_path(args.s3_bucket, args.run_id, "scene")
     print(f"[Stage2] Downloading scene from {scene_s3}")
@@ -52,108 +52,78 @@ def main():
         scene_meta = json.load(f)
 
     from isaacsim import SimulationApp
-    simulation_app = SimulationApp({"headless": args.headless, "width": 1024, "height": 1024})
+    simulation_app = SimulationApp({"headless": args.headless, "width": 640, "height": 480})
+
+    if "/isaac-sim/scripts" not in sys.path:
+        sys.path.insert(0, "/isaac-sim/scripts")
 
     import numpy as np
-    import omni.replicator.core as rep
     import omni.usd
-    import carb.settings
-
-    carb.settings.get_settings().set("rtx/post/dlss/execMode", 2)
 
     print(f"[Stage2] Opening scene: {usd_path}")
     omni.usd.get_context().open_stage(usd_path)
-
-    # Wait for stage to load
-    import asyncio
-    asyncio.get_event_loop().run_until_complete(omni.usd.get_context().load_stage_async())
-
     stage = omni.usd.get_context().get_stage()
 
-    # Compute scene bounds for camera placement
+    from pxr import Gf, UsdGeom
+
+    # Compute scene bounds from metadata
     aisle_length = scene_meta.get("aisle_length", 20.0)
     num_aisles = scene_meta.get("num_aisles", 4)
     aisle_width = 3.0
     shelf_depth = 1.0
     total_width = num_aisles * (aisle_width + shelf_depth * 2)
 
-    center_x = aisle_length / 2
-    center_y = (num_aisles - 1) * (aisle_width + shelf_depth * 2) / 2
+    # Grid covers the scene with padding
+    padding = 2.0
+    origin_x = -padding
+    origin_y = -(total_width / 2 + padding)
+    extent_x = aisle_length + 2 * padding
+    extent_y = total_width + 2 * padding
 
-    # Determine render size to match resolution
-    scene_extent_x = aisle_length + 4
-    scene_extent_y = total_width + 4
-    render_width = int(scene_extent_x / args.resolution)
-    render_height = int(scene_extent_y / args.resolution)
-    # Clamp to reasonable size
-    render_width = min(render_width, 2048)
-    render_height = min(render_height, 2048)
+    grid_w = int(extent_x / args.resolution)
+    grid_h = int(extent_y / args.resolution)
+    occupancy = np.zeros((grid_h, grid_w), dtype=np.uint8)
 
-    print(f"[Stage2] Render size: {render_width}x{render_height}, resolution: {args.resolution} m/px")
+    print(f"[Stage2] Grid: {grid_w}x{grid_h}, resolution: {args.resolution} m/px")
 
-    # Create overhead orthographic camera
-    from pxr import Gf, UsdGeom
+    # Rasterize each obstacle prim into the occupancy grid
+    obstacle_count = 0
+    for prim in stage.Traverse():
+        if not prim.IsA(UsdGeom.Cube):
+            continue
+        path = str(prim.GetPath())
+        # Skip the floor (large ground plane)
+        if "Floor" in path or "Ground" in path:
+            continue
 
-    cam_prim = stage.DefinePrim("/World/OccupancyCamera", "Camera")
-    cam = UsdGeom.Camera(cam_prim)
-    cam.GetProjectionAttr().Set("orthographic")
-    cam.GetHorizontalApertureAttr().Set(float(scene_extent_x * 10))  # cm
-    cam.GetVerticalApertureAttr().Set(float(scene_extent_y * 10))
-    cam.GetClippingRangeAttr().Set(Gf.Vec2f(0.1, 50.0))
+        xformable = UsdGeom.Xformable(prim)
+        xform_ops = xformable.GetOrderedXformOps()
 
-    xf = UsdGeom.Xformable(cam_prim)
-    xf.AddTranslateOp().Set(Gf.Vec3d(center_x, center_y, 20.0))
-    # Look straight down: rotate -90 around X
-    xf.AddRotateXYZOp().Set(Gf.Vec3f(0, 0, 0))  # Camera default looks down -Z in ortho
+        translate = Gf.Vec3d(0, 0, 0)
+        scale = Gf.Vec3d(1, 1, 1)
+        for op in xform_ops:
+            if op.GetOpType() == UsdGeom.XformOp.TypeTranslate:
+                translate = op.Get()
+            elif op.GetOpType() == UsdGeom.XformOp.TypeScale:
+                scale = op.Get()
 
-    rep.orchestrator.set_capture_on_play(False)
+        # Cube default extent is [-1,1] in each axis, so half-size = scale
+        min_x = translate[0] - abs(scale[0])
+        max_x = translate[0] + abs(scale[0])
+        min_y = translate[1] - abs(scale[1])
+        max_y = translate[1] + abs(scale[1])
 
-    # Render depth from overhead
-    render_product = rep.create.render_product(
-        str(cam_prim.GetPath()), (render_width, render_height)
-    )
+        # Convert to grid coordinates
+        col_min = max(0, int((min_x - origin_x) / args.resolution))
+        col_max = min(grid_w, int((max_x - origin_x) / args.resolution))
+        row_min = max(0, int((min_y - origin_y) / args.resolution))
+        row_max = min(grid_h, int((max_y - origin_y) / args.resolution))
 
-    writer = rep.writers.get("BasicWriter")
-    tmp_render_dir = "/tmp/occupancy_render"
-    os.makedirs(tmp_render_dir, exist_ok=True)
-    writer.initialize(
-        output_dir=tmp_render_dir,
-        rgb=False,
-        distance_to_image_plane=True,
-        semantic_segmentation=False,
-    )
-    writer.attach([render_product])
+        if col_min < col_max and row_min < row_max:
+            occupancy[row_min:row_max, col_min:col_max] = 1
+            obstacle_count += 1
 
-    # Render a single frame
-    with rep.trigger.on_frame():
-        pass
-    rep.orchestrator.step()
-    rep.orchestrator.wait_until_complete()
-
-    writer.detach()
-
-    # Load rendered depth and threshold to binary occupancy
-    depth_dir = os.path.join(tmp_render_dir, "distance_to_image_plane")
-    depth_files = [f for f in os.listdir(depth_dir) if f.endswith(".npy")]
-    if not depth_files:
-        print("[Stage2] ERROR: No depth render output found")
-        simulation_app.close()
-        sys.exit(1)
-
-    depth_map = np.load(os.path.join(depth_dir, depth_files[0]))
-    if depth_map.ndim == 3:
-        depth_map = depth_map[:, :, 0]
-
-    print(f"[Stage2] Depth map shape: {depth_map.shape}, range: [{depth_map.min():.2f}, {depth_map.max():.2f}]")
-
-    # Objects closer to camera (lower depth at top-down view) are obstacles
-    # Floor is at z=0, camera at z=20, so floor depth ~20, obstacles < 20
-    max_depth = depth_map.max()
-    # Occupied = where depth is significantly less than max (obstacle present)
-    occupancy = np.zeros_like(depth_map, dtype=np.uint8)
-    obstacle_mask = depth_map < (max_depth - args.depth_threshold)
-    occupancy[obstacle_mask] = 1  # 1 = occupied, 0 = free
-
+    print(f"[Stage2] Rasterized {obstacle_count} obstacle prims")
     print(f"[Stage2] Occupancy: {occupancy.sum()} occupied cells, "
           f"{(occupancy == 0).sum()} free cells out of {occupancy.size} total")
 
@@ -171,11 +141,11 @@ def main():
 
     # Save metadata
     occ_metadata = {
-        "width": occupancy.shape[1],
-        "height": occupancy.shape[0],
+        "width": grid_w,
+        "height": grid_h,
         "resolution": args.resolution,
-        "origin_x": center_x - scene_extent_x / 2,
-        "origin_y": center_y - scene_extent_y / 2,
+        "origin_x": origin_x,
+        "origin_y": origin_y,
         "occupied_cells": int(occupancy.sum()),
         "free_cells": int((occupancy == 0).sum()),
     }

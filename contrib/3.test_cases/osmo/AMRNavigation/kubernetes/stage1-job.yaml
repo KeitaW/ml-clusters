@@ -49,6 +49,10 @@ spec:
               mountPath: /isaac-sim/.cache
             - name: shm
               mountPath: /dev/shm
+            - name: output
+              mountPath: /output
+            - name: input
+              mountPath: /input
       volumes:
         - name: cache
           emptyDir:
@@ -57,3 +61,7 @@ spec:
           emptyDir:
             medium: Memory
             sizeLimit: 16Gi
+        - name: output
+          emptyDir: {}
+        - name: input
+          emptyDir: {}

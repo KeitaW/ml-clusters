@@ -1,14 +1,19 @@
-# EKS Cluster for Isaac Sim Synthetic Data Generation
+# EKS Demo Cluster for OSMO AMR Navigation Pipeline
 
-Standalone Terraform configuration that provisions an EKS cluster with GPU nodes for running NVIDIA Isaac Sim workloads.
+Demo Terraform configuration that provisions an EKS cluster with heterogeneous GPU capacity for running the warehouse AMR synthetic data generation pipeline with NVIDIA OSMO orchestration.
+
+This is a **demo/test architecture** — for production deployments, pin AMI versions, restrict the cluster endpoint to private, and add more granular disruption budgets.
 
 ## What It Provisions
 
 - **VPC** with 3 AZs, public/private subnets, NAT gateway
 - **EKS** cluster (v1.31) with a system managed node group
-- **Karpenter** for GPU node auto-provisioning (G5/G6 instances)
-- **GPU Operator** (driver pre-installed on AMI, toolkit disabled)
-- **S3 bucket** for SDG output data
+- **Karpenter** with two GPU NodePools:
+  - `isaac-sim-rendering` — G5/G6 instances for rendering stages (1-5)
+  - `gpu-training` — P4d+ instances for training stage (6)
+- **GPU Operator** (driver pre-installed on AMI, toolkit enabled)
+- **S3 bucket** for inter-stage pipeline data
+- **IRSA role** for pipeline ServiceAccount S3 access
 
 ## Prerequisites
 
@@ -34,8 +39,15 @@ $(terraform output -raw configure_kubectl)
 # Verify GPU Operator
 kubectl get pods -n gpu-operator
 
-# Run Isaac Sim test case
-# See ../../../3.test_cases/isaac-sim/MobilityGen/kubernetes/README.md
+# Create pipeline ServiceAccount (use IRSA role ARN from output)
+IRSA_ARN=$(terraform output -raw pipeline_irsa_role_arn)
+kubectl create namespace isaac-sim
+kubectl create serviceaccount amr-pipeline-sa -n isaac-sim
+kubectl annotate serviceaccount amr-pipeline-sa -n isaac-sim \
+  eks.amazonaws.com/role-arn=$IRSA_ARN
+
+# Run AMR pipeline test case
+# See ../../../3.test_cases/osmo/AMRNavigation/kubernetes/README.md
 ```
 
 ## Cleanup
@@ -56,7 +68,8 @@ terraform destroy
 | `cluster_version` | Kubernetes version | `1.31` |
 | `region` | AWS region | `us-west-2` |
 | `gpu_instance_types` | GPU instance types for rendering | `["g5.2xlarge", "g5.4xlarge", "g6.2xlarge"]` |
-| `max_gpu_nodes` | Max GPU nodes Karpenter can provision | `4` |
+| `max_gpu_nodes` | Max rendering GPU nodes (G-series) | `4` |
+| `max_training_gpus` | Max training GPUs (P-series) | `8` |
 
 ## Architecture
 
@@ -66,7 +79,9 @@ VPC (10.0.0.0/16)
 └── Private Subnets
     ├── EKS Control Plane
     ├── System Node Group (m5.xlarge x2)
-    └── Karpenter GPU Nodes (G5/G6, on-demand)
-        ├── GPU Operator (device plugin, DCGM)
-        └── Isaac Sim Jobs
+    ├── Karpenter Rendering Pool (G5/G6, on-demand)
+    │   ├── GPU Operator (device plugin, DCGM)
+    │   └── Isaac Sim Jobs (stages 1-5)
+    └── Karpenter Training Pool (P4d+, on-demand)
+        └── Training Jobs (stage 6)
 ```

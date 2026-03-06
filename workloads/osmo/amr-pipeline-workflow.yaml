@@ -5,6 +5,7 @@ metadata:
   namespace: isaac-sim
 spec:
   pool: simulation
+  priority: medium
   tasks:
     # Stage 1: Build warehouse USD scene
     - name: scene-setup
@@ -32,6 +33,7 @@ spec:
           effect: NoSchedule
       nodeSelector:
         karpenter.k8s.aws/instance-category: "g"
+      schedulerName: kai-scheduler
       serviceAccountName: amr-pipeline-sa
       volumes:
         - name: cache
@@ -43,9 +45,15 @@ spec:
           emptyDir:
             medium: Memory
             sizeLimit: 16Gi
+        - name: output
+          mountPath: /output
+          emptyDir: {}
+        - name: input
+          mountPath: /input
+          emptyDir: {}
       timeout: 1800
 
-    # Stage 2: Compute occupancy grid from scene
+    # Stage 2: Compute occupancy grid from scene prims
     - name: occupancy-map
       inputs: [scene-setup]
       image: 159553542841.dkr.ecr.us-west-2.amazonaws.com/isaac-sim-amr:latest
@@ -72,6 +80,7 @@ spec:
           effect: NoSchedule
       nodeSelector:
         karpenter.k8s.aws/instance-category: "g"
+      schedulerName: kai-scheduler
       serviceAccountName: amr-pipeline-sa
       volumes:
         - name: cache
@@ -83,6 +92,12 @@ spec:
           emptyDir:
             medium: Memory
             sizeLimit: 16Gi
+        - name: output
+          mountPath: /output
+          emptyDir: {}
+        - name: input
+          mountPath: /input
+          emptyDir: {}
       timeout: 1800
 
     # Stage 3: A* trajectory planning
@@ -114,6 +129,7 @@ spec:
           effect: NoSchedule
       nodeSelector:
         karpenter.k8s.aws/instance-category: "g"
+      schedulerName: kai-scheduler
       serviceAccountName: amr-pipeline-sa
       volumes:
         - name: cache
@@ -125,6 +141,12 @@ spec:
           emptyDir:
             medium: Memory
             sizeLimit: 16Gi
+        - name: output
+          mountPath: /output
+          emptyDir: {}
+        - name: input
+          mountPath: /input
+          emptyDir: {}
       timeout: 3600
 
     # Stage 4: Multi-modal rendering (RGB, depth, segmentation)
@@ -154,6 +176,7 @@ spec:
           effect: NoSchedule
       nodeSelector:
         karpenter.k8s.aws/instance-category: "g"
+      schedulerName: kai-scheduler
       serviceAccountName: amr-pipeline-sa
       volumes:
         - name: cache
@@ -165,17 +188,23 @@ spec:
           emptyDir:
             medium: Memory
             sizeLimit: 16Gi
+        - name: output
+          mountPath: /output
+          emptyDir: {}
+        - name: input
+          mountPath: /input
+          emptyDir: {}
       timeout: 7200
 
-    # Stage 5: Domain augmentation (Cosmos Transfer / torchvision fallback)
-    - name: augment
+    # Stage 5: Domain augmentation (Cosmos Transfer-compatible, torchvision fallback)
+    - name: domain-augment
       inputs: [render]
       image: 159553542841.dkr.ecr.us-west-2.amazonaws.com/cosmos-transfer-amr:latest
       imagePullSecrets:
         - ngc-secret
       command:
         - python
-        - /scripts/stage5_cosmos_transfer.py
+        - /scripts/stage5_domain_augment.py
         - --s3_bucket
         - amr-pipeline-data
         - --run_id
@@ -190,12 +219,20 @@ spec:
           effect: NoSchedule
       nodeSelector:
         karpenter.k8s.aws/instance-category: "g"
+      schedulerName: kai-scheduler
       serviceAccountName: amr-pipeline-sa
+      volumes:
+        - name: output
+          mountPath: /output
+          emptyDir: {}
+        - name: input
+          mountPath: /input
+          emptyDir: {}
       timeout: 7200
 
-    # Stage 6: Train CNN navigator + compare raw vs augmented
+    # Stage 6: Baseline waypoint regressor — train + compare raw vs augmented
     - name: train-evaluate
-      inputs: [render, augment]
+      inputs: [render, domain-augment]
       image: 159553542841.dkr.ecr.us-west-2.amazonaws.com/xmobility-amr:latest
       imagePullSecrets:
         - ngc-secret
@@ -216,5 +253,16 @@ spec:
           effect: NoSchedule
       nodeSelector:
         karpenter.k8s.aws/instance-category: "p"
+      schedulerName: kai-scheduler
       serviceAccountName: amr-pipeline-sa
+      volumes:
+        - name: output
+          mountPath: /output
+          emptyDir: {}
+        - name: input
+          mountPath: /input
+          emptyDir: {}
+      # Checkpoint support: training can be resumed from last saved checkpoint
+      # on reschedule. Stage 6 saves checkpoints to S3 after each epoch.
+      exitAction: reschedule
       timeout: 14400

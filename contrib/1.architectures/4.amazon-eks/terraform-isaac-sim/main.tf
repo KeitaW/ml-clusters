@@ -41,7 +41,7 @@ locals {
   tags = merge(var.tags, {
     "terraform"   = "true"
     "cluster"     = var.cluster_name
-    "test-case"   = "isaac-sim-mobilitygen"
+    "test-case"   = "osmo-amr-pipeline"
   })
 }
 
@@ -165,7 +165,7 @@ resource "helm_release" "gpu_operator" {
         enabled = false
       }
       toolkit = {
-        enabled = false
+        enabled = true
       }
       dcgmExporter = {
         enabled = true
@@ -199,6 +199,68 @@ resource "kubectl_manifest" "gpu_ec2nodeclass" {
   })
 
   depends_on = [helm_release.karpenter]
+}
+
+# ---------- Training NodePool (P-series for stage 6) ----------
+
+resource "kubectl_manifest" "training_nodepool" {
+  yaml_body = templatefile("${path.module}/karpenter/nodepool-training.yaml", {
+    max_training_gpus = var.max_training_gpus
+  })
+
+  depends_on = [helm_release.karpenter]
+}
+
+resource "kubectl_manifest" "training_ec2nodeclass" {
+  yaml_body = templatefile("${path.module}/karpenter/ec2nodeclass-training.yaml", {
+    cluster_name = var.cluster_name
+    node_role    = module.eks.karpenter_node_iam_role_name
+  })
+
+  depends_on = [helm_release.karpenter]
+}
+
+# ---------- IRSA Role for Pipeline S3 Access ----------
+
+module "pipeline_irsa" {
+  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
+  version = "~> 5.52"
+
+  role_name = "${var.cluster_name}-amr-pipeline-s3"
+
+  oidc_providers = {
+    main = {
+      provider_arn               = module.eks.oidc_provider_arn
+      namespace_service_accounts = ["isaac-sim:amr-pipeline-sa"]
+    }
+  }
+
+  role_policy_arns = {
+    s3 = aws_iam_policy.pipeline_s3.arn
+  }
+}
+
+resource "aws_iam_policy" "pipeline_s3" {
+  name = "${var.cluster_name}-amr-pipeline-s3"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject",
+          "s3:PutObject",
+          "s3:ListBucket",
+          "s3:DeleteObject",
+        ]
+        Resource = [
+          aws_s3_bucket.sdg_output.arn,
+          "${aws_s3_bucket.sdg_output.arn}/*",
+        ]
+      }
+    ]
+  })
 }
 
 # ---------- S3 Bucket for SDG Output ----------

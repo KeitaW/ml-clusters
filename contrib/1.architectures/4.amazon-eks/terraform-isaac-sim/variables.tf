@@ -29,9 +29,15 @@ variable "gpu_instance_types" {
 }
 
 variable "max_gpu_nodes" {
-  description = "Maximum number of GPU nodes Karpenter can provision"
+  description = "Maximum number of rendering GPU nodes Karpenter can provision"
   type        = number
   default     = 4
+}
+
+variable "max_training_gpus" {
+  description = "Maximum number of training GPUs (P-series) Karpenter can provision"
+  type        = number
+  default     = 8
 }
 
 variable "tags" {

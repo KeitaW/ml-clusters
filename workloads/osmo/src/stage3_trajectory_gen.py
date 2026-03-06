@@ -20,6 +20,12 @@ import sys
 
 print = functools.partial(print, flush=True)
 
+# Ensure utils package is importable
+_SCRIPTS_DIR = os.path.dirname(os.path.abspath(__file__)) if "__file__" in dir() else "/isaac-sim/scripts"
+for _p in [_SCRIPTS_DIR, "/isaac-sim/scripts"]:
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
+
 import numpy as np
 
 
@@ -140,11 +146,7 @@ def main():
     args = parse_args()
     print("[Stage3] Starting trajectory generation")
 
-    scripts_dir = os.path.dirname(os.path.abspath(__file__))
-    if scripts_dir not in sys.path:
-        sys.path.insert(0, scripts_dir)
-
-    from utils.s3_sync import download_directory, upload_directory, make_stage_path
+    from amr_utils.s3_sync import download_directory, upload_directory, make_stage_path
 
     # Download occupancy map
     occ_s3 = make_stage_path(args.s3_bucket, args.run_id, "occupancy")

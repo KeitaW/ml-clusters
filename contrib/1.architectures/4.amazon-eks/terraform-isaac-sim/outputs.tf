@@ -27,3 +27,8 @@ output "karpenter_node_role_name" {
   description = "IAM role name for Karpenter-provisioned nodes"
   value       = module.eks.karpenter_node_iam_role_name
 }
+
+output "pipeline_irsa_role_arn" {
+  description = "IAM role ARN for pipeline ServiceAccount (IRSA)"
+  value       = module.pipeline_irsa.iam_role_arn
+}

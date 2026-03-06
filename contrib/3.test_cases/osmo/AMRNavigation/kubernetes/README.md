@@ -1,12 +1,12 @@
-# MobilityGen on Kubernetes (Amazon EKS)
+# AMR Navigation Pipeline on Kubernetes (Amazon EKS)
 
-Step-by-step instructions for running Isaac Sim MobilityGen on Amazon EKS. Supports both single-stage SDG and the full 6-stage AMR navigation pipeline.
+Step-by-step instructions for running the warehouse AMR navigation pipeline on Amazon EKS with NVIDIA OSMO orchestration. Supports both single-stage SDG and the full 6-stage demo pipeline.
 
 ## Prerequisites
 
 1. **Amazon EKS cluster** with Kubernetes 1.29+ and Karpenter installed
-2. **GPU nodes**: G5/G6 instances (rendering) + P-series (training) with NVIDIA GPU Operator
-3. **NVIDIA OSMO** installed (for pipeline mode)
+2. **GPU nodes**: G5/G6 instances (rendering pool) + P-series (training pool) with NVIDIA GPU Operator
+3. **NVIDIA OSMO** + **KAI Scheduler** installed (for pipeline mode)
 4. **NGC API key**: Sign up at [ngc.nvidia.com](https://ngc.nvidia.com/) and generate an API key
 5. **S3 bucket** for inter-stage data (pipeline mode) with IRSA configured
 6. **Tools**: `kubectl`, `docker`, `aws` CLI, `envsubst`
@@ -166,10 +166,10 @@ kubectl delete namespace isaac-sim
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
-| Pod stuck in `Pending` | No GPU nodes available | Check Karpenter NodePool for G/P-series |
+| Pod stuck in `Pending` | No GPU nodes available | Check Karpenter NodePools for rendering (G-series) and training (P-series) |
 | `ImagePullBackOff` | NGC auth failed | Verify `NGC_API_KEY` and re-run `0.setup-ngc-secret.sh` |
 | `OOMKilled` | Insufficient memory | Use g5.4xlarge+ (64GB RAM) for Isaac Sim stages |
-| Vulkan errors in logs | Missing GPU driver/toolkit | Enable `toolkit.enabled=true` in GPU Operator values |
+| Vulkan errors in logs | Missing GPU toolkit | Enable `toolkit.enabled=true` in GPU Operator values |
 | Job timeout | Shader compilation slow | Increase `activeDeadlineSeconds` in job template |
 | S3 `AccessDenied` | IRSA misconfigured | Check ServiceAccount annotation and IAM role trust policy |
 | Stage fails on download | Previous stage didn't complete | Check preceding stage logs and S3 output |

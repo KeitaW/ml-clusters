@@ -5,6 +5,7 @@ metadata:
   namespace: ${NAMESPACE}
 spec:
   pool: simulation
+  priority: medium
   tasks:
     - name: scene-setup
       image: ${ISAAC_SIM_IMAGE_URI}
@@ -31,6 +32,7 @@ spec:
           effect: NoSchedule
       nodeSelector:
         karpenter.k8s.aws/instance-category: "g"
+      schedulerName: kai-scheduler
       serviceAccountName: amr-pipeline-sa
       volumes:
         - name: cache
@@ -42,6 +44,12 @@ spec:
           emptyDir:
             medium: Memory
             sizeLimit: 16Gi
+        - name: output
+          mountPath: /output
+          emptyDir: {}
+        - name: input
+          mountPath: /input
+          emptyDir: {}
       timeout: 1800
 
     - name: occupancy-map
@@ -70,6 +78,7 @@ spec:
           effect: NoSchedule
       nodeSelector:
         karpenter.k8s.aws/instance-category: "g"
+      schedulerName: kai-scheduler
       serviceAccountName: amr-pipeline-sa
       volumes:
         - name: cache
@@ -81,6 +90,12 @@ spec:
           emptyDir:
             medium: Memory
             sizeLimit: 16Gi
+        - name: output
+          mountPath: /output
+          emptyDir: {}
+        - name: input
+          mountPath: /input
+          emptyDir: {}
       timeout: 1800
 
     - name: trajectory-gen
@@ -111,6 +126,7 @@ spec:
           effect: NoSchedule
       nodeSelector:
         karpenter.k8s.aws/instance-category: "g"
+      schedulerName: kai-scheduler
       serviceAccountName: amr-pipeline-sa
       volumes:
         - name: cache
@@ -122,6 +138,12 @@ spec:
           emptyDir:
             medium: Memory
             sizeLimit: 16Gi
+        - name: output
+          mountPath: /output
+          emptyDir: {}
+        - name: input
+          mountPath: /input
+          emptyDir: {}
       timeout: 3600
 
     - name: render
@@ -150,6 +172,7 @@ spec:
           effect: NoSchedule
       nodeSelector:
         karpenter.k8s.aws/instance-category: "g"
+      schedulerName: kai-scheduler
       serviceAccountName: amr-pipeline-sa
       volumes:
         - name: cache
@@ -161,16 +184,22 @@ spec:
           emptyDir:
             medium: Memory
             sizeLimit: 16Gi
+        - name: output
+          mountPath: /output
+          emptyDir: {}
+        - name: input
+          mountPath: /input
+          emptyDir: {}
       timeout: 7200
 
-    - name: augment
+    - name: domain-augment
       inputs: [render]
       image: ${COSMOS_IMAGE_URI}
       imagePullSecrets:
         - ngc-secret
       command:
         - python
-        - /scripts/stage5_cosmos_transfer.py
+        - /scripts/stage5_domain_augment.py
         - --s3_bucket
         - "${S3_BUCKET}"
         - --run_id
@@ -185,11 +214,19 @@ spec:
           effect: NoSchedule
       nodeSelector:
         karpenter.k8s.aws/instance-category: "g"
+      schedulerName: kai-scheduler
       serviceAccountName: amr-pipeline-sa
+      volumes:
+        - name: output
+          mountPath: /output
+          emptyDir: {}
+        - name: input
+          mountPath: /input
+          emptyDir: {}
       timeout: 7200
 
     - name: train-evaluate
-      inputs: [render, augment]
+      inputs: [render, domain-augment]
       image: ${XMOBILITY_IMAGE_URI}
       imagePullSecrets:
         - ngc-secret
@@ -210,5 +247,16 @@ spec:
           effect: NoSchedule
       nodeSelector:
         karpenter.k8s.aws/instance-category: "p"
+      schedulerName: kai-scheduler
       serviceAccountName: amr-pipeline-sa
+      volumes:
+        - name: output
+          mountPath: /output
+          emptyDir: {}
+        - name: input
+          mountPath: /input
+          emptyDir: {}
+      # Checkpoint support: training saves checkpoints to S3 after each epoch
+      # and can be resumed on reschedule.
+      exitAction: reschedule
       timeout: 14400

@@ -23,7 +23,7 @@ spec:
           image: ${COSMOS_IMAGE_URI}
           command:
             - python
-            - /scripts/stage5_cosmos_transfer.py
+            - /scripts/stage5_domain_augment.py
           args:
             - "--s3_bucket"
             - "${S3_BUCKET}"
@@ -36,3 +36,13 @@ spec:
               memory: "32Gi"
             limits:
               nvidia.com/gpu: 1
+          volumeMounts:
+            - name: output
+              mountPath: /output
+            - name: input
+              mountPath: /input
+      volumes:
+        - name: output
+          emptyDir: {}
+        - name: input
+          emptyDir: {}

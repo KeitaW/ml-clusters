@@ -18,6 +18,12 @@ import sys
 
 print = functools.partial(print, flush=True)
 
+# Ensure utils package is importable — must happen before any delayed imports
+_SCRIPTS_DIR = os.path.dirname(os.path.abspath(__file__)) if "__file__" in dir() else "/isaac-sim/scripts"
+for _p in [_SCRIPTS_DIR, "/isaac-sim/scripts"]:
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Stage 1: Warehouse Scene Setup")
@@ -37,6 +43,10 @@ def main():
     from isaacsim import SimulationApp
     simulation_app = SimulationApp({"headless": args.headless, "width": 640, "height": 480})
 
+    # Re-add scripts dir — SimulationApp init may reset sys.path
+    if "/isaac-sim/scripts" not in sys.path:
+        sys.path.insert(0, "/isaac-sim/scripts")
+
     import omni.usd
     import carb.settings
     import omni.replicator.core as rep
@@ -47,12 +57,7 @@ def main():
 
     stage = omni.usd.get_context().get_stage()
 
-    # Add scripts dir to path for utils import
-    scripts_dir = os.path.dirname(os.path.abspath(__file__))
-    if scripts_dir not in sys.path:
-        sys.path.insert(0, scripts_dir)
-
-    from utils.scene_builder import build_warehouse_scene
+    from amr_utils.scene_builder import build_warehouse_scene
 
     scene_config = {
         "num_aisles": args.num_aisles,
@@ -87,7 +92,7 @@ def main():
     print(f"[Stage1] Total prims in scene: {prim_count}")
 
     # Upload to S3
-    from utils.s3_sync import upload_directory, make_stage_path
+    from amr_utils.s3_sync import upload_directory, make_stage_path
     s3_path = make_stage_path(args.s3_bucket, args.run_id, "scene")
     print(f"[Stage1] Uploading to {s3_path}")
     upload_directory(args.output_dir, s3_path)

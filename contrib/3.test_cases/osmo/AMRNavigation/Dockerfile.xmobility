@@ -2,7 +2,7 @@ FROM nvcr.io/nvidia/pytorch:24.05-py3
 
 RUN pip install --no-cache-dir boto3 Pillow torchvision
 
-COPY src/utils/ /scripts/utils/
+COPY src/amr_utils/ /scripts/amr_utils/
 COPY src/stage6_train_evaluate.py /scripts/
 
 WORKDIR /scripts

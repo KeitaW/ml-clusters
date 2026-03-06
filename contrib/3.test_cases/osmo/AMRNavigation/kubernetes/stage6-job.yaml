@@ -38,3 +38,13 @@ spec:
               memory: "64Gi"
             limits:
               nvidia.com/gpu: 1
+          volumeMounts:
+            - name: output
+              mountPath: /output
+            - name: input
+              mountPath: /input
+      volumes:
+        - name: output
+          emptyDir: {}
+        - name: input
+          emptyDir: {}

@@ -18,6 +18,12 @@ import sys
 
 print = functools.partial(print, flush=True)
 
+# Ensure utils package is importable
+_SCRIPTS_DIR = os.path.dirname(os.path.abspath(__file__)) if "__file__" in dir() else "/isaac-sim/scripts"
+for _p in [_SCRIPTS_DIR, "/isaac-sim/scripts"]:
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Stage 4: Multi-Modal Rendering")
@@ -88,11 +94,7 @@ def main():
     args = parse_args()
     print("[Stage4] Starting multi-modal rendering")
 
-    scripts_dir = os.path.dirname(os.path.abspath(__file__))
-    if scripts_dir not in sys.path:
-        sys.path.insert(0, scripts_dir)
-
-    from utils.s3_sync import download_directory, upload_directory, make_stage_path
+    from amr_utils.s3_sync import download_directory, upload_directory, make_stage_path
 
     # Download inputs
     scene_s3 = make_stage_path(args.s3_bucket, args.run_id, "scene")
@@ -120,6 +122,10 @@ def main():
         "height": args.image_height,
     })
 
+    # Re-add scripts dir — SimulationApp init may reset sys.path
+    if "/isaac-sim/scripts" not in sys.path:
+        sys.path.insert(0, "/isaac-sim/scripts")
+
     import omni.replicator.core as rep
     import omni.usd
     import carb.settings
@@ -128,9 +134,6 @@ def main():
 
     print(f"[Stage4] Opening scene: {usd_path}")
     omni.usd.get_context().open_stage(usd_path)
-
-    import asyncio
-    asyncio.get_event_loop().run_until_complete(omni.usd.get_context().load_stage_async())
 
     rep.orchestrator.set_capture_on_play(False)
 

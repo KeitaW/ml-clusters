@@ -5,7 +5,7 @@ FROM nvcr.io/nvidia/isaac-sim:5.1.0
 RUN /isaac-sim/python.sh -m pip install --no-cache-dir Pillow scipy
 
 # Copy all pipeline scripts
-COPY src/utils/ /isaac-sim/scripts/utils/
+COPY src/amr_utils/ /isaac-sim/scripts/amr_utils/
 COPY src/stage1_scene_setup.py /isaac-sim/scripts/
 COPY src/stage2_occupancy_map.py /isaac-sim/scripts/
 COPY src/stage3_trajectory_gen.py /isaac-sim/scripts/
