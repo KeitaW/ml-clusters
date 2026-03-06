@@ -59,12 +59,21 @@ def parse_args():
 
 
 def run_xmobility_train(xmobility_dir, config_path, dataset_dir, output_dir,
-                        label, wandb_entity="", wandb_project="",
+                        label, epochs=None, wandb_entity="", wandb_project="",
                         wandb_run=""):
     """Run X-Mobility training via its train.py entry point."""
+    config_files = [config_path]
+
+    # Override epoch count via a temporary gin config if specified
+    if epochs is not None:
+        epoch_override = os.path.join(output_dir, "epoch_override.gin")
+        with open(epoch_override, "w") as f:
+            f.write(f"NUM_EPOCHS={epochs}\n")
+        config_files.append(epoch_override)
+
     cmd = [
         sys.executable, os.path.join(xmobility_dir, "train.py"),
-        "-c", config_path,
+        "-c", *config_files,
         "-d", dataset_dir,
         "-o", output_dir,
     ]
@@ -165,6 +174,7 @@ def main():
             args.xmobility_dir, pretrain_config,
             pretrain_dataset, pretrain_output,
             label="WorldModelPretrain",
+            epochs=args.pretrain_epochs,
             wandb_entity=args.wandb_entity,
             wandb_project=args.wandb_project,
             wandb_run=f"{args.run_id}-pretrain",
@@ -186,6 +196,7 @@ def main():
         args.xmobility_dir, train_config,
         train_dataset, train_output,
         label="ActionPolicyTrain",
+        epochs=args.train_epochs,
         wandb_entity=args.wandb_entity,
         wandb_project=args.wandb_project,
         wandb_run=f"{args.run_id}-train",
