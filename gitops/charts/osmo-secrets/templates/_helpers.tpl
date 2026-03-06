@@ -1,6 +1,6 @@
 {{- define "osmo-secrets.sync-container" -}}
 - name: sync
-  image: {{ .Values.image.repository }}:{{ .Values.image.tag | quote }}
+  image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
   env:
     - name: SECRET_ARN
       value: {{ .Values.secretArn | quote }}

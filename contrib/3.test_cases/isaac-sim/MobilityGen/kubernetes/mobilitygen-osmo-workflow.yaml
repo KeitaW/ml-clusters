@@ -1,0 +1,49 @@
+apiVersion: osmo.nvidia.com/v1
+kind: Workflow
+metadata:
+  name: mobilitygen-sdg
+  namespace: isaac-sim
+spec:
+  pool: simulation
+  tasks:
+    - name: generate-data
+      image: ${IMAGE_URI}
+      imagePullSecrets:
+        - ngc-secret
+      command:
+        - /isaac-sim/python.sh
+        - /isaac-sim/scripts/automated_mobilitygen.py
+        - --num_trajectories
+        - "10"
+        - --num_frames
+        - "200"
+        - --output_dir
+        - /output
+        - --headless
+      env:
+        ACCEPT_EULA: "Y"
+        PRIVACY_CONSENT: "Y"
+      resources:
+        gpu: 1
+        cpu: 16
+        memory: 32Gi
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
+      nodeSelector:
+        karpenter.k8s.aws/instance-category: "g"
+      volumes:
+        - name: cache
+          mountPath: /isaac-sim/.cache
+          emptyDir:
+            sizeLimit: 50Gi
+        - name: shm
+          mountPath: /dev/shm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 16Gi
+        - name: output
+          mountPath: /output
+          emptyDir: {}
+      timeout: 3600

@@ -1,0 +1,115 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sdg-script
+  namespace: isaac-sim
+data:
+  sdg_headless.py: |
+    import os
+    import sys
+    from isaacsim import SimulationApp
+
+    simulation_app = SimulationApp(launch_config={"headless": True})
+
+    import carb.settings
+    import omni.replicator.core as rep
+    import omni.usd
+    from isaacsim.core.utils.semantics import add_labels
+    from pxr import Sdf
+
+    print("=== Creating scene ===", flush=True)
+    omni.usd.get_context().new_stage()
+    rep.orchestrator.set_capture_on_play(False)
+    carb.settings.get_settings().set("rtx/post/dlss/execMode", 2)
+
+    stage = omni.usd.get_context().get_stage()
+    dome_light = stage.DefinePrim("/World/DomeLight", "DomeLight")
+    dome_light.CreateAttribute("inputs:intensity", Sdf.ValueTypeNames.Float).Set(500.0)
+    cube = stage.DefinePrim("/World/Cube", "Cube")
+    add_labels(cube, labels=["MyCube"], instance_name="class")
+
+    rp = rep.create.render_product("/OmniverseKit_Persp", (640, 480))
+
+    writer = rep.writers.get("BasicWriter")
+    out_dir = "/output/sdg_basic"
+    print(f"=== Output directory: {out_dir} ===", flush=True)
+    writer.initialize(output_dir=out_dir, rgb=True, bounding_box_2d_tight=True)
+    writer.attach(rp)
+
+    for i in range(10):
+        print(f"=== Step {i}/9 ===", flush=True)
+        rep.orchestrator.step()
+
+    writer.detach()
+    rp.destroy()
+    rep.orchestrator.wait_until_complete()
+    print("=== Rendering complete ===", flush=True)
+
+    for root, dirs, files in os.walk(out_dir):
+        for f in sorted(files):
+            fpath = os.path.join(root, f)
+            size_kb = os.path.getsize(fpath) / 1024
+            print(f"  {fpath} ({size_kb:.1f} KB)", flush=True)
+
+    print("=== SDG complete ===", flush=True)
+    simulation_app.close()
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: isaac-sim-basic
+  namespace: isaac-sim
+spec:
+  backoffLimit: 1
+  activeDeadlineSeconds: 1800
+  template:
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+        - name: ngc-secret
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
+      nodeSelector:
+        karpenter.k8s.aws/instance-category: "g"
+      containers:
+        - name: isaac-sim
+          image: nvcr.io/nvidia/isaac-sim:5.1.0
+          env:
+            - name: ACCEPT_EULA
+              value: "Y"
+            - name: PRIVACY_CONSENT
+              value: "Y"
+          resources:
+            requests:
+              nvidia.com/gpu: 1
+              cpu: "16"
+              memory: "32Gi"
+            limits:
+              nvidia.com/gpu: 1
+          volumeMounts:
+            - name: cache
+              mountPath: /isaac-sim/.cache
+            - name: shm
+              mountPath: /dev/shm
+            - name: output
+              mountPath: /output
+            - name: script
+              mountPath: /scripts
+              readOnly: true
+          command: ["/isaac-sim/python.sh"]
+          args: ["/scripts/sdg_headless.py"]
+      volumes:
+        - name: cache
+          emptyDir:
+            sizeLimit: 50Gi
+        - name: shm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 16Gi
+        - name: output
+          emptyDir: {}
+        - name: script
+          configMap:
+            name: sdg-script

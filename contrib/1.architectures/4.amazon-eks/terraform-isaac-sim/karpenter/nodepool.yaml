@@ -1,0 +1,29 @@
+apiVersion: karpenter.sh/v1
+kind: NodePool
+metadata:
+  name: isaac-sim-rendering
+spec:
+  template:
+    spec:
+      requirements:
+        - key: karpenter.sh/capacity-type
+          operator: In
+          values: ["on-demand"]
+        - key: karpenter.k8s.aws/instance-category
+          operator: In
+          values: ["g"]
+        - key: karpenter.k8s.aws/instance-generation
+          operator: Gt
+          values: ["4"]
+      taints:
+        - key: nvidia.com/gpu
+          effect: NoSchedule
+      nodeClassRef:
+        group: karpenter.k8s.aws
+        kind: EC2NodeClass
+        name: isaac-sim-rendering
+  limits:
+    nvidia.com/gpu: ${max_gpu_nodes}
+  disruption:
+    consolidationPolicy: WhenEmpty
+    consolidateAfter: 10m

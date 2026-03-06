@@ -1,0 +1,59 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: mobilitygen-sdg
+  namespace: ${NAMESPACE}
+spec:
+  backoffLimit: 1
+  activeDeadlineSeconds: 3600
+  template:
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+        - name: ngc-secret
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
+      nodeSelector:
+        karpenter.k8s.aws/instance-category: "g"
+      containers:
+        - name: mobilitygen
+          image: ${IMAGE_URI}
+          env:
+            - name: ACCEPT_EULA
+              value: "Y"
+            - name: PRIVACY_CONSENT
+              value: "Y"
+          args:
+            - "--num_trajectories"
+            - "${NUM_TRAJECTORIES}"
+            - "--num_frames"
+            - "100"
+            - "--output_dir"
+            - "/output"
+            - "--headless"
+          resources:
+            requests:
+              nvidia.com/gpu: 1
+              cpu: "16"
+              memory: "32Gi"
+            limits:
+              nvidia.com/gpu: 1
+          volumeMounts:
+            - name: cache
+              mountPath: /isaac-sim/.cache
+            - name: shm
+              mountPath: /dev/shm
+            - name: output
+              mountPath: /output
+      volumes:
+        - name: cache
+          emptyDir:
+            sizeLimit: 50Gi
+        - name: shm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 16Gi
+        - name: output
+          emptyDir: {}
