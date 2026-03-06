@@ -214,9 +214,8 @@ resource "kubectl_manifest" "training_nodepool" {
 
 resource "kubectl_manifest" "training_ec2nodeclass" {
   yaml_body = templatefile("${path.module}/karpenter/ec2nodeclass-training.yaml", {
-    cluster_name            = var.cluster_name
-    node_role               = module.eks.karpenter_node_iam_role_name
-    capacity_reservation_id = var.capacity_reservation_id
+    cluster_name = var.cluster_name
+    node_role    = module.eks.karpenter_node_iam_role_name
   })
 
   depends_on = [helm_release.karpenter]

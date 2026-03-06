@@ -1,6 +1,6 @@
-FROM nvcr.io/nvidia/pytorch:24.01-py3
+FROM nvcr.io/nvidia/pytorch:25.01-py3
 
-# Install X-Mobility dependencies
+# Install X-Mobility + lerobot dependencies
 RUN pip install --no-cache-dir \
     boto3 \
     diffusers==0.29.2 \
@@ -10,7 +10,17 @@ RUN pip install --no-cache-dir \
     timm==1.0.14 \
     transformers==4.48.1 \
     wandb==0.19.4 \
-    huggingface_hub
+    huggingface_hub \
+    torcheval \
+    moviepy \
+    polars \
+    tensorboardX \
+    av jsonlines datasets deepdiff draccus imageio \
+    opencv-python-headless gymnasium flask pyserial \
+    rerun-sdk termcolor cmake
+
+# Pin numpy to base image version (torch compiled against it)
+RUN pip install --no-cache-dir "numpy==1.26.4"
 
 RUN pip install --no-cache-dir lerobot==0.3.3 --no-deps
 

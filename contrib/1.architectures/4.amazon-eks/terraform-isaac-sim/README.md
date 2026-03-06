@@ -10,7 +10,7 @@ This is a **demo/test architecture** — for production deployments, pin AMI ver
 - **EKS** cluster (v1.31) with a system managed node group
 - **Karpenter** with two GPU NodePools:
   - `isaac-sim-rendering` — G5/G6 instances for rendering stages (1-5)
-  - `gpu-training` — P6-B300 instances for X-Mobility training (stage 6), backed by capacity reservation
+  - `gpu-training` — P6-B300 instances for X-Mobility training (stage 6), backed by Capacity Block
 - **GPU Operator** (driver pre-installed on AMI, toolkit enabled)
 - **S3 bucket** for inter-stage pipeline data
 - **IRSA role** for pipeline ServiceAccount S3 access
@@ -19,7 +19,7 @@ This is a **demo/test architecture** — for production deployments, pin AMI ver
 
 - Terraform >= 1.10
 - AWS CLI configured with permissions to create VPC, EKS, IAM resources
-- EC2 Capacity Reservation for training instances (p6-b300.48xlarge)
+- EC2 Capacity Block for training instances (p6-b300.48xlarge)
 - `kubectl` for post-deploy verification
 
 ## Usage
@@ -72,7 +72,6 @@ terraform destroy
 | `max_gpu_nodes` | Max rendering GPU nodes (G-series) | `4` |
 | `training_instance_type` | Training instance type | `p6-b300.48xlarge` |
 | `max_training_gpus` | Max training GPUs | `48` |
-| `capacity_reservation_id` | EC2 ODCR ID for training (empty for on-demand) | `""` |
 
 ## Architecture
 
@@ -85,6 +84,6 @@ VPC (10.0.0.0/16)
     +-- Karpenter Rendering Pool (G5/G6, on-demand)
     |   +-- GPU Operator (device plugin, DCGM)
     |   +-- Isaac Sim Jobs (stages 1-5)
-    +-- Karpenter Training Pool (p6-b300.48xlarge, capacity reservation)
+    +-- Karpenter Training Pool (p6-b300.48xlarge, Capacity Block)
         +-- X-Mobility Training (stage 6, 8 GPUs per node)
 ```

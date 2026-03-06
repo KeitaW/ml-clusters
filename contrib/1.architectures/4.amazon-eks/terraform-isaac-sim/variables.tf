@@ -46,12 +46,6 @@ variable "training_instance_type" {
   default     = "p6-b300.48xlarge"
 }
 
-variable "capacity_reservation_id" {
-  description = "EC2 Capacity Reservation ID for training instances (leave empty for on-demand)"
-  type        = string
-  default     = ""
-}
-
 variable "tags" {
   description = "Tags to apply to all resources"
   type        = map(string)

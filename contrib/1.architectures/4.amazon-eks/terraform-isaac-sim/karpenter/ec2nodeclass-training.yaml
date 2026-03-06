@@ -4,10 +4,6 @@ metadata:
   name: gpu-training
 spec:
   role: ${node_role}
-%{ if capacity_reservation_id != "" }
-  capacityReservationSelectorTerms:
-    - id: "${capacity_reservation_id}"
-%{ endif }
   amiSelectorTerms:
     - alias: al2023@latest
   subnetSelectorTerms:

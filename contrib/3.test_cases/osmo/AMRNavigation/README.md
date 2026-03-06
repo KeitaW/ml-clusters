@@ -26,7 +26,7 @@ scene-setup --> occupancy-map --> trajectory-gen --> render --+--> domain-augmen
 | 3. Trajectory Gen | `stage3_trajectory_gen.py` | isaac-sim-amr | G-series (rendering) | A* path planning + camera poses |
 | 4. Render | `stage4_render.py` | isaac-sim-amr | G-series (rendering) | RGB/depth/segmentation rendering |
 | 5. Domain Augment | `stage5_domain_augment.py` | cosmos-transfer-amr | G-series (rendering) | Visual augmentation (torchvision, Cosmos Transfer-compatible) |
-| 6. Train+Eval | `stage6_train_evaluate.py` | xmobility-amr | P6-B300 (training) | X-Mobility foundation model training (8 GPUs, capacity reservation) |
+| 6. Train+Eval | `stage6_train_evaluate.py` | xmobility-amr | P6-B300 (training) | X-Mobility foundation model training (8 GPUs, Capacity Block) |
 
 **OSMO orchestration features used:**
 - DAG task dependencies via `inputs:`
@@ -41,8 +41,8 @@ scene-setup --> occupancy-map --> trajectory-gen --> render --+--> domain-augmen
 
 - Amazon EKS cluster with GPU nodes (G5/G6 for rendering, P6-B300 for training)
 - NVIDIA GPU Operator + KAI Scheduler + OSMO Platform installed
-- Karpenter with separate NodePools: rendering (G-series on-demand) and training (P6-B300 via capacity reservation)
-- EC2 Capacity Reservation for training instances (e.g., `cr-060a52a865d1673d0` for p6-b300.48xlarge)
+- Karpenter with separate NodePools: rendering (G-series on-demand) and training (P6-B300 via Capacity Block)
+- EC2 Capacity Block for training instances (p6-b300.48xlarge)
 - [NVIDIA NGC](https://ngc.nvidia.com/) account and API key
 - X-Mobility datasets from [HuggingFace](https://huggingface.co/datasets/nvidia/X-Mobility), pre-cached in S3
 - S3 bucket for inter-stage data + IRSA ServiceAccount
