@@ -19,7 +19,7 @@ Creates a SageMaker HyperPod cluster supporting both Slurm and EKS orchestrators
 ```hcl
 # live/_envcommon/hyperpod.hcl
 terraform {
-  source = "${dirname(find_in_parent_folders("root.hcl"))}//modules/hyperpod"
+  source = "${dirname(find_in_parent_folders("terragrunt.hcl"))}/../modules/hyperpod"
 }
 
 inputs = {

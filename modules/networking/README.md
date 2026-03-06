@@ -21,7 +21,7 @@ Provisions a VPC with public and private subnets, NAT gateways, EFA security gro
 ```hcl
 # live/_envcommon/networking.hcl
 terraform {
-  source = "${dirname(find_in_parent_folders("root.hcl"))}//modules/networking"
+  source = "${dirname(find_in_parent_folders("terragrunt.hcl"))}/../modules/networking"
 }
 
 inputs = {

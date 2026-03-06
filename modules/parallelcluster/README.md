@@ -16,7 +16,7 @@ Wraps the official `aws-tf/parallelcluster/aws` community module to deploy the P
 ```hcl
 # live/_envcommon/parallelcluster.hcl
 terraform {
-  source = "${dirname(find_in_parent_folders("root.hcl"))}//modules/parallelcluster"
+  source = "${dirname(find_in_parent_folders("terragrunt.hcl"))}/../modules/parallelcluster"
 }
 
 inputs = {

@@ -23,7 +23,7 @@ Creates an AMP workspace for metrics storage, SNS topic for alert notifications,
 ```hcl
 # live/main-account/us-east-1/monitoring/terragrunt.hcl
 terraform {
-  source = "${dirname(find_in_parent_folders("root.hcl"))}//modules/monitoring"
+  source = "${dirname(find_in_parent_folders("terragrunt.hcl"))}/../modules/monitoring"
 }
 
 inputs = {

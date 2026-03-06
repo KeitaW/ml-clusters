@@ -22,7 +22,7 @@ Creates a shared KMS key and optional IAM roles for various cluster components. 
 ```hcl
 # live/_envcommon/iam.hcl
 terraform {
-  source = "${dirname(find_in_parent_folders("root.hcl"))}//modules/iam"
+  source = "${dirname(find_in_parent_folders("terragrunt.hcl"))}/../modules/iam"
 }
 
 inputs = {

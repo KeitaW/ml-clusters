@@ -26,7 +26,7 @@ Provisions an EKS cluster using the community module with a managed system node 
 ```hcl
 # live/_envcommon/eks-cluster.hcl
 terraform {
-  source = "${dirname(find_in_parent_folders("root.hcl"))}//modules/eks-cluster"
+  source = "${dirname(find_in_parent_folders("terragrunt.hcl"))}/../modules/eks-cluster"
 }
 
 inputs = {

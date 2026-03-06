@@ -21,7 +21,7 @@ Provisions FSx for Lustre (PERSISTENT_2 with LZ4 compression) and EFS (elastic t
 ```hcl
 # live/_envcommon/shared-storage.hcl
 terraform {
-  source = "${dirname(find_in_parent_folders("root.hcl"))}//modules/shared-storage"
+  source = "${dirname(find_in_parent_folders("terragrunt.hcl"))}/../modules/shared-storage"
 }
 
 inputs = {

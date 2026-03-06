@@ -19,7 +19,7 @@ Creates an S3 bucket configured for ML data storage with versioning enabled, con
 ```hcl
 # live/_envcommon/s3-data-bucket.hcl
 terraform {
-  source = "${dirname(find_in_parent_folders("root.hcl"))}//modules/s3-data-bucket"
+  source = "${dirname(find_in_parent_folders("terragrunt.hcl"))}/../modules/s3-data-bucket"
 }
 
 inputs = {

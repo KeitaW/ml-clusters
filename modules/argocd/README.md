@@ -21,7 +21,7 @@ Deploys ArgoCD via Helm on the hub EKS cluster with IRSA for cross-cluster authe
 ```hcl
 # live/main-account/us-east-1/argocd/terragrunt.hcl
 terraform {
-  source = "${dirname(find_in_parent_folders("root.hcl"))}//modules/argocd"
+  source = "${dirname(find_in_parent_folders("terragrunt.hcl"))}/../modules/argocd"
 }
 
 inputs = {

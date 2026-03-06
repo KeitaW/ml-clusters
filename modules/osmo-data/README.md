@@ -20,7 +20,7 @@ Creates the data layer for OSMO workloads: an Aurora PostgreSQL Serverless v2 cl
 ```hcl
 # live/secondary-account/us-west-2/osmo-data/terragrunt.hcl
 terraform {
-  source = "${dirname(find_in_parent_folders("root.hcl"))}//modules/osmo-data"
+  source = "${dirname(find_in_parent_folders("terragrunt.hcl"))}/../modules/osmo-data"
 }
 
 inputs = {

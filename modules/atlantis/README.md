@@ -22,7 +22,7 @@ Deploys Atlantis via Helm on EKS with Pod Identity for AWS authentication and a 
 ```hcl
 # live/main-account/us-east-1/atlantis/terragrunt.hcl
 terraform {
-  source = "${dirname(find_in_parent_folders("root.hcl"))}//modules/atlantis"
+  source = "${dirname(find_in_parent_folders("terragrunt.hcl"))}/../modules/atlantis"
 }
 
 inputs = {

@@ -21,7 +21,7 @@ Sets up authentication infrastructure for cluster services. Creates a Route53 ho
 ```hcl
 # live/_envcommon/midway-auth.hcl
 terraform {
-  source = "${dirname(find_in_parent_folders("root.hcl"))}//modules/midway-auth"
+  source = "${dirname(find_in_parent_folders("terragrunt.hcl"))}/../modules/midway-auth"
 }
 
 inputs = {

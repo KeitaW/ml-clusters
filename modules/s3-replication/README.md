@@ -20,7 +20,7 @@ Configures S3 bucket replication rules on a source bucket to replicate objects t
 ```hcl
 # live/_envcommon/s3-replication.hcl (not yet in _envcommon)
 terraform {
-  source = "${dirname(find_in_parent_folders("root.hcl"))}//modules/s3-replication"
+  source = "${dirname(find_in_parent_folders("terragrunt.hcl"))}/../modules/s3-replication"
 }
 
 inputs = {

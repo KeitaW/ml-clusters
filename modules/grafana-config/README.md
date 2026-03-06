@@ -17,7 +17,7 @@ Configures an existing Amazon Managed Grafana workspace with an AMP data source 
 ```hcl
 # live/secondary-account/us-east-1/grafana-config/terragrunt.hcl
 terraform {
-  source = "${dirname(find_in_parent_folders("root.hcl"))}//modules/grafana-config"
+  source = "${dirname(find_in_parent_folders("terragrunt.hcl"))}/../modules/grafana-config"
 }
 
 inputs = {
